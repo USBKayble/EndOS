@@ -6,7 +6,7 @@
 
 ## Features
 
-*   ** automated Hardware Detection**:
+*   **Automated Hardware Detection**:
     *   **GPU**: Automatically detects Nvidia, AMD, or Intel and installs the correct drivers (including DKMS + Headers).
     *   **Bootloader**: Detects GRUB or systemd-boot to correctly configure the boot splash (Plymouth).
 *   **Robust Automation**:
