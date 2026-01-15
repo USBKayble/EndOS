@@ -51,17 +51,82 @@ sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mir
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
 
-# Remove conflicting packages (Legacy Audio/Bluetooth stack)
-# This prevents conflicts when installing Pipewire and Wireplumber
-CONFLICTING_PACKAGES=("jack2" "jack" "pulseaudio" "pulseaudio-alsa" "pulseaudio-bluetooth" "pipewire-media-session")
-for pkg in "${CONFLICTING_PACKAGES[@]}"; do
-    if pacman -Qs "^$pkg$" > /dev/null; then
-        echo "Removing conflicting package: $pkg..."
-        sudo pacman -Rdd --noconfirm "$pkg"
-    fi
-done
+# Function to handle package installation with dynamic conflict resolution
+install_with_conflict_resolution() {
+    local packages="$*"
+    local max_retries=5
+    local retry_count=0
 
-sudo pacman -Syu --noconfirm --needed base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils
+    while [ $retry_count -lt $max_retries ]; do
+        echo "Attempting installation (Try $((retry_count+1))/$max_retries)..."
+        
+        # Run pacman and capture both stdout and stderr
+        set +e
+        output=$(sudo pacman -Syu --noconfirm --needed $packages 2>&1)
+        exit_code=$?
+        set -e
+        
+        if [ $exit_code -eq 0 ]; then
+            echo "$output"
+            echo "Installation successful."
+            return 0
+        fi
+        
+        echo "$output"
+        
+        # Check for specific conflict pattern ":: pkgA and pkgB are in conflict"
+        conflict_line=$(echo "$output" | grep "are in conflict" | head -n 1)
+        
+        if [ -n "$conflict_line" ]; then
+            echo "Conflict detected: $conflict_line"
+            # Extract package names (Assuming format ":: pkgA and pkgB are in conflict")
+            # We use awk to grab the 2nd and 4th words (adjusting for ":: ")
+            pkgA=$(echo "$conflict_line" | awk '{print $2}')
+            pkgB=$(echo "$conflict_line" | awk '{print $4}')
+            
+            # Determine which package to remove (the one currently installed)
+            candidate=""
+            if pacman -Qq "$pkgA" &>/dev/null && pacman -Qq "$pkgB" &>/dev/null; then
+                 # Both installed? This is rare for a conflict during install unless replacing.
+                 # We prefer to keep the one in our requested list, but logic is tricky.
+                 # Let's guess pkgB is the blocker if pkgA is the new one 'pipewire-jack'.
+                 # Actually, usually the one NOT in $packages is the target.
+                 # Simple approach: remove the one that matches the installed check.
+                 candidate="$pkgB" 
+            elif pacman -Qq "$pkgA" &>/dev/null; then
+                 candidate="$pkgA"
+            elif pacman -Qq "$pkgB" &>/dev/null; then
+                 candidate="$pkgB"
+            fi
+            
+            if [ -n "$candidate" ]; then
+                echo "Attempting to resolve conflict by removing existing package: $candidate..."
+                set +e
+                sudo pacman -Rdd --noconfirm "$candidate"
+                rm_exit=$?
+                set -e
+                if [ $rm_exit -ne 0 ]; then
+                     echo "Failed to remove $candidate. Manual intervention required."
+                     return 1
+                fi
+                retry_count=$((retry_count+1))
+                continue
+            else
+                echo "Could not identify installed conflicting package. Manual intervention required."
+                return 1
+            fi
+        else
+            echo "Installation failed with non-conflict error."
+            return 1
+        fi
+    done
+    
+    echo "Max retries reached. Installation failed."
+    return 1
+}
+
+echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
+install_with_conflict_resolution base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils
 
 # Enable basic services
 echo "Enabling NetworkManager, SDDM, SSH, and Bluetooth..."
