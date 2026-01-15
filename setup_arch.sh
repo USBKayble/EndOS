@@ -45,7 +45,7 @@ fi
 
 # 2. System Update & Base Packages
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm..."
-sudo pacman -Syu --noconfirm --needed base-devel git wget curl networkmanager sddm
+sudo pacman -Syu --noconfirm --needed base-devel git wget curl networkmanager sddm archlinux-keyring
 sudo systemctl enable NetworkManager
 sudo systemctl enable sddm
 
@@ -62,12 +62,12 @@ else
 fi
 
 # 4. GPU Drivers
-echo "=========================================="
-echo "Select your GPU vendor for driver installation:"
-echo "1) Nvidia"
-echo "2) AMD"
-echo "3) Intel"
-echo "4) Skip / Virtual Machine"
+echo "==========================================
+Select your GPU vendor for driver installation:
+1) Nvidia
+2) AMD
+3) Intel
+4) Skip / Virtual Machine
 read -p "Enter choice [1-4]: " gpu_choice
 
 case $gpu_choice in
@@ -164,15 +164,42 @@ sudo systemctl enable --now autoupdate.timer
 echo "Automatic updates enabled (daily)."
 
 # 8. Install Dotfiles (End-4/dots-hyprland)
-echo "=========================================="
-echo "Starting End-4 Dotfiles Installation..."
-echo "This script will now hand over control to the dotfiles installer."
-echo "Follow the on-screen prompts."
-bash <(curl -s https://ii.clsty.link/get)
+echo "==========================================
+Starting End-4 Dotfiles Installation...
+Cloning repository manually for reliability..."
+
+# Remove existing dir if it exists to avoid conflicts
+rm -rf ~/dots-hyprland-temp
+git clone --depth 1 https://github.com/end-4/dots-hyprland.git ~/dots-hyprland-temp
+cd ~/dots-hyprland-temp
+
+echo "Running dotfiles installer..."
+set +e 
+./setup install
+install_exit_code=$?
+set -e
+
+if [ $install_exit_code -ne 0 ]; then
+    echo "==========================================
+The dotfiles installer exited with an error code ($install_exit_code)."
+    echo "This is frequently caused by 'HYPRLAND_INSTANCE_SIGNATURE not set' because Hyprland isn't running yet."
+    echo "If you saw that error, it is safe to ignore."
+    echo "==========================================
+    read -t 10 -p "Continue with SDDM/Autologin setup? (Y/n) " continue_choice
+    continue_choice=${continue_choice:-Y} # Default to Yes
+    
+    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+        echo "Aborting setup."
+        exit $install_exit_code
+    fi
+fi
+
+cd ..
+rm -rf ~/dots-hyprland-temp
 
 # 9. Configure SDDM Autologin
-echo "=========================================="
-echo "Configuring SDDM Autologin (Bypass Lock Screen)..."
+echo "==========================================
+Configuring SDDM Autologin (Bypass Lock Screen)..."
 
 # Ensure Hyprland session file exists (just in case)
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
@@ -196,15 +223,19 @@ if [ ! -d "/etc/sddm.conf.d" ]; then
     sudo mkdir -p /etc/sddm.conf.d
 fi
 
+# Force write the autologin config
 sudo bash -c "cat > /etc/sddm.conf.d/autologin.conf <<EOF
 [Autologin]
 User=$autologin_user
 Session=hyprland.desktop
 EOF"
+
+# Ensure correct permissions
+sudo chmod 644 /etc/sddm.conf.d/autologin.conf
 echo "SDDM Autologin configured."
 
-echo "=========================================="
-echo "Setup Complete!"
+echo "==========================================
+Setup Complete!"
 echo "Note: Millennium for Steam may require you to toggle the 'Millennium' option inside Steam settings."
 echo "Note: For Spicetify, run 'spicetify backup apply' once you've logged into Spotify."
 echo "Please reboot your system."
