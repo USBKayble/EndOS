@@ -93,20 +93,30 @@ report_issues() {
         read -p "Would you like to report these issues to GitHub now? (y/n) " report_choice
         if [[ "$report_choice" =~ ^[Yy]$ ]]; then
             echo "Checking query tool..."
-            if command -v gh &> /dev/null; then
-                 if gh auth status &>/dev/null; then
-                     echo "Submitting issue to GitHub..."
-                     gh issue create --title "Installation Error Report $(date +%F)" --body "Automated error report. See attached logs." --repo USBKayble/EndOS
-                     echo "Please paste the contents of $LOG_FILE into the issue comments."
-                 else
-                     echo "GitHub CLI (gh) is installed but not authenticated."
-                     echo "Please run 'gh auth login' later or manually report issues."
-                 fi
+            
+            # Try GitHub CLI first
+            if command -v gh &> /dev/null && gh auth status &>/dev/null; then
+                 echo "Submitting issue to GitHub (Authenticated)..."
+                 gh issue create --title "Installation Error Report $(date +%F)" --body "Automated error report. See attached logs." --repo USBKayble/EndOS
+                 echo "Please paste the contents of $LOG_FILE into the issue comments."
             else
-                echo "GitHub CLI (gh) not found."
+                 # Fallback to anonymous upload (0x0.st)
+                 echo "GitHub CLI not authenticated. Uploading log anonymously to 0x0.st..."
+                 if command -v curl &> /dev/null; then
+                     log_url=$(curl -F "file=@$LOG_FILE" https://0x0.st)
+                     echo "=========================================="
+                     echo "Log uploaded successfully!"
+                     echo "Please share this URL with the developer:"
+                     echo "$log_url"
+                     echo "=========================================="
+                     echo "(You can paste this URL into a simplified issue report)"
+                 else
+                     echo "Error: 'curl' is not installed. Cannot upload log."
+                     echo "Please manually copy the content of $LOG_FILE."
+                 fi
+                 
+                 echo "Please manually report issues at: https://github.com/USBKayble/EndOS/issues"
             fi
-            echo "Please manually report issues at: https://github.com/USBKayble/EndOS/issues"
-            echo "Attach the content of: $LOG_FILE"
         fi
     fi
 }
@@ -368,17 +378,22 @@ install_exit_code=$?
 set -e
 
 if [ $install_exit_code -ne 0 ]; then
-    echo "==========================================
+    if [ $install_exit_code -eq 143 ]; then
+         echo "Dotfiles installer exited with 143 (SIGTERM). This is expected if Hyprland is not running."
+         echo "Assuming success and proceeding..."
+    else
+        echo "==========================================
 The dotfiles installer exited with an error code ($install_exit_code)."
-    echo "This is frequently caused by 'HYPRLAND_INSTANCE_SIGNATURE not set' because Hyprland isn't running yet."
-    echo "If you saw that error, it is safe to ignore."
-    echo "=========================================="
-    read -t 10 -p "Continue with SDDM/Autologin setup? (Y/n) " continue_choice
-    continue_choice=${continue_choice:-Y} # Default to Yes
-    
-    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-        echo "Aborting setup."
-        exit $install_exit_code
+        echo "This is frequently caused by 'HYPRLAND_INSTANCE_SIGNATURE not set' because Hyprland isn't running yet."
+        echo "If you saw that error, it is safe to ignore."
+        echo "=========================================="
+        read -t 10 -p "Continue with SDDM/Autologin setup? (Y/n) " continue_choice
+        continue_choice=${continue_choice:-Y} # Default to Yes
+        
+        if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+            echo "Aborting setup."
+            exit $install_exit_code
+        fi
     fi
 fi
 
