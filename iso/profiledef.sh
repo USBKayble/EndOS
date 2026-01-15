@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 iso_name="EndOS"
-iso_label="ENDOS_$(date +%Y%m)"
+iso_label="ENDOS_LIVE"
 iso_publisher="EndOS <https://github.com/USBKayble/EndOS>"
 iso_application="EndOS Live/Rescue CD"
 iso_version="$(date +%Y.%m.%d)"

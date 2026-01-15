@@ -29,17 +29,20 @@ jobs:
         # Create a build directory based on the official 'releng' profile
         cp -r /usr/share/archiso/configs/releng iso-build
         
-        # Overlay our custom files (packages, profiledef, root config)
-        # We start by removing the releng packages list so ours takes precedence? 
-        # Actually cp will overwrite options if we copy files.
-        cp -r iso/* iso-build/
+        # Overlay our custom configuration
+        # 1. Overwrite profile definition (Name, Label)
+        cp iso/profiledef.sh iso-build/profiledef.sh
+        
+        # 2. Overlay airootfs (Config, .zlogin) - Recursive copy
+        cp -r iso/airootfs/* iso-build/airootfs/
+        
+        # NOTE: We intentionally DO NOT overwrite packages.x86_64.
+        # We use the standard 'releng' package list to ensure maximum hardware compatibility (drivers, tools).
+        # 'releng' includes standard tools + archinstall.
         
         # Ensure setup_arch.sh is in the ISO root
         cp setup_arch.sh iso-build/airootfs/root/setup_arch.sh
         chmod +x iso-build/airootfs/root/setup_arch.sh
-        
-        # Make zlogin executable (if it isn't)
-        chmod +x iso-build/airootfs/root/.zlogin
 
     - name: Build Arch ISO
       run: |
