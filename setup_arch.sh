@@ -66,13 +66,12 @@ echo "Updating system and installing base-devel, git, wget, curl, NetworkManager
 
 LOG_FILE="./setup_error.log"
 
-# Function to log messages
+# Function to log messages (Console only)
 log_msg() {
     echo "$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
-# Function to log errors
+# Function to log errors (Console + File)
 log_error() {
     echo "ERROR: $1" >&2
     echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] - $1" >> "$LOG_FILE"
@@ -83,6 +82,35 @@ pause_on_error() {
     log_error "$1"
     read -p "Press Enter to acknowledge and continue (or Ctrl+C to abort)..."
 }
+
+# Function to ask user to report errors to GitHub
+report_issues() {
+    if [ -f "$LOG_FILE" ]; then
+        echo ""
+        echo "=========================================="
+        echo "Errors were recorded during installation."
+        echo "=========================================="
+        read -p "Would you like to report these issues to GitHub now? (y/n) " report_choice
+        if [[ "$report_choice" =~ ^[Yy]$ ]]; then
+            echo "Checking query tool..."
+            if command -v gh &> /dev/null; then
+                 if gh auth status &>/dev/null; then
+                     echo "Submitting issue to GitHub..."
+                     gh issue create --title "Installation Error Report $(date +%F)" --body "Automated error report. See attached logs." --repo USBKayble/EndOS
+                     echo "Please paste the contents of $LOG_FILE into the issue comments."
+                 else
+                     echo "GitHub CLI (gh) is installed but not authenticated."
+                     echo "Please run 'gh auth login' later or manually report issues."
+                 fi
+            else
+                echo "GitHub CLI (gh) not found."
+            fi
+            echo "Please manually report issues at: https://github.com/USBKayble/EndOS/issues"
+            echo "Attach the content of: $LOG_FILE"
+        fi
+    fi
+}
+trap report_issues EXIT
 
 # Function to handle package installation with dynamic conflict resolution and smart checks
 install_with_conflict_resolution() {
@@ -116,14 +144,16 @@ install_with_conflict_resolution() {
         exit_code=$?
         set -e
         
-        # Log the output to file for troubleshooting
-        echo "$output" >> "$LOG_FILE"
-        
         if [ $exit_code -eq 0 ]; then
             echo "$output"
             echo "Installation successful."
             return 0
         fi
+        
+        # Only log to file on failure
+        echo "----------------------------------------" >> "$LOG_FILE"
+        echo "Failed command: sudo pacman -Syu --noconfirm --needed $packages" >> "$LOG_FILE"
+        echo "$output" >> "$LOG_FILE"
         
         echo "$output"
         log_error "Installation failed via pacman. Check $LOG_FILE for details."
@@ -176,7 +206,7 @@ install_with_conflict_resolution() {
 }
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
-install_with_conflict_resolution base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils
+install_with_conflict_resolution base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils github-cli
 
 # Enable basic services
 echo "Enabling NetworkManager, SDDM, SSH, and Bluetooth..."
