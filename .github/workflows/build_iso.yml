@@ -15,21 +15,32 @@ jobs:
     steps:
     - name: Install Archiso Tools
       run: |
-        pacman -Sy --noconfirm archiso git
+        pacman -Sy --noconfirm archiso git grub syslinux dosfstools mtools
 
     - name: Checkout Code
       uses: actions/checkout@v4
 
     - name: Prepare ISO Files
       run: |
+        # Create a build directory based on the official 'releng' profile
+        cp -r /usr/share/archiso/configs/releng iso-build
+        
+        # Overlay our custom files (packages, profiledef, root config)
+        # We start by removing the releng packages list so ours takes precedence? 
+        # Actually cp will overwrite options if we copy files.
+        cp -r iso/* iso-build/
+        
         # Ensure setup_arch.sh is in the ISO root
-        cp setup_arch.sh iso/airootfs/root/setup_arch.sh
-        chmod +x iso/airootfs/root/setup_arch.sh
+        cp setup_arch.sh iso-build/airootfs/root/setup_arch.sh
+        chmod +x iso-build/airootfs/root/setup_arch.sh
+        
+        # Make zlogin executable (if it isn't)
+        chmod +x iso-build/airootfs/root/.zlogin
 
     - name: Build Arch ISO
       run: |
         mkdir -p output
-        mkarchiso -v -w /tmp/archiso-work -o output iso
+        mkarchiso -v -w /tmp/archiso-work -o output iso-build
 
     - name: Release
       uses: softprops/action-gh-release@v1
