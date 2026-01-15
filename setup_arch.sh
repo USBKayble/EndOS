@@ -18,19 +18,32 @@ echo "This script will install Hyprland, dotfiles, drivers, and various apps."
 echo "Ensure you are running this on a fresh Arch Linux install with internet access."
 read -p "Press Enter to continue or Ctrl+C to abort..."
 
-# Sudo Keep-alive
-# Ask for sudo password upfront
+# Sudo Keep-alive (Robust)
+# Ask for password once, then keep sudo alive indefinitely
 echo "Checking for sudo..."
 if ! command -v sudo &> /dev/null; then
     echo "Sudo is not installed. Please install it first (pacman -S sudo) and add your user to the wheel group."
     exit 1
 fi
 
-echo "Please enter your password to authorize the installation..."
-sudo -v
+while true; do
+    read -s -p "Please enter your sudo password: " USER_PASS
+    echo
+    if echo "$USER_PASS" | sudo -S -v 2>/dev/null; then
+        echo "Password accepted."
+        break
+    else
+        echo "Incorrect password. Please try again."
+    fi
+done
 
-# Keep-alive: update existing sudo time stamp until the script has finished
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+# Keep-alive: update existing sudo time stamp using the captured password
+# This ensures it never times out even if the script takes a long time
+while true; do 
+    echo "$USER_PASS" | sudo -S -v 2>/dev/null
+    sleep 60
+    kill -0 "$$" || exit
+done &
 KEEP_ALIVE_PID=$!
 trap "kill $KEEP_ALIVE_PID" EXIT
 
