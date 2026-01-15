@@ -42,6 +42,13 @@ jobs:
         # Set permissions
         chmod +x iso-build/airootfs/root/.zlogin
         chmod +x iso-build/airootfs/root/setup_arch.sh
+        
+        # 3. Branding: Rename ISO to EndOS
+        # We modify the official profiledef.sh in-place to avoid breaking boot modes.
+        sed -i 's/iso_name="archlinux"/iso_name="EndOS"/' iso-build/profiledef.sh
+        sed -i 's/iso_label="ARCH_$(date +%Y%m)"/iso_label="ENDOS_$(date +%Y%m)"/' iso-build/profiledef.sh
+        sed -i 's/iso_publisher="Arch Linux <https:\/\/archlinux.org>"/iso_publisher="EndOS <https:\/\/github.com\/USBKayble\/EndOS>"/' iso-build/profiledef.sh
+        sed -i 's/iso_application="Arch Linux Live\/Rescue CD"/iso_application="EndOS Live\/Rescue CD"/' iso-build/profiledef.sh
 
     - name: Build Arch ISO
       run: |
