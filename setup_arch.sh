@@ -192,14 +192,21 @@ echo "Installing Plymouth (Bootscreen)..."
 yay -S --noconfirm plymouth
 
 echo "To enable Plymouth, we need to modify mkinitcpio and bootloader config."
-read -p "Do you want to attempt automatic configuration of Plymouth? (y/n) " plymouth_config
+echo "Attempting automatic configuration..."
 
-if [[ "$plymouth_config" =~ ^[Yy]$ ]]; then
+# Function to pause on error
+pause_on_error() {
+    echo "Error encountered: $1"
+    read -p "Press Enter to acknowledge and continue (or Ctrl+C to abort)..."
+}
+
+# Plymouth Configuration Block
+{
     # Backup
     sudo cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
+    [ -f /etc/default/grub ] && sudo cp /etc/default/grub /etc/default/grub.bak
     
     # Edit mkinitcpio: add 'plymouth' to HOOKS
-    # We look for HOOKS=(... udev ... ) and insert plymouth after udev
     if ! grep -q "plymouth" /etc/mkinitcpio.conf; then
         echo "Adding plymouth hook to mkinitcpio..."
         sudo sed -i 's/udev/udev plymouth/' /etc/mkinitcpio.conf
@@ -215,18 +222,14 @@ if [[ "$plymouth_config" =~ ^[Yy]$ ]]; then
 
     if command -v grub-mkconfig &> /dev/null && [ -f "/boot/grub/grub.cfg" ]; then
         echo "GRUB detected."
-        sudo cp /etc/default/grub /etc/default/grub.bak
         if ! grep -q "splash quiet" /etc/default/grub; then
              sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="splash quiet /' /etc/default/grub
         fi
         echo "Regenerating GRUB config..."
-        sudo grub-mkconfig -o /boot/grub/grub.cfg
+        sudo grub-mkconfig -o /boot/grub/grub.cfg || pause_on_error "Failed to generate GRUB config."
 
     elif command -v bootctl &> /dev/null && bootctl status &> /dev/null; then
         echo "systemd-boot detected."
-        # This is trickier as config is per-entry. 
-        # We'll try to find the standard arch entry and append options.
-        # usually in /boot/loader/entries/*.conf
         echo "Attempting to add 'splash quiet' to systemd-boot entries..."
         for entry in /boot/loader/entries/*.conf; do
             if grep -q "options" "$entry" && ! grep -q "splash quiet" "$entry"; then
@@ -235,14 +238,13 @@ if [[ "$plymouth_config" =~ ^[Yy]$ ]]; then
             fi
         done
     else
-        echo "Could not detect GRUB or systemd-boot configuration. Please configure boot arguments manually."
+        echo "Could not detect GRUB or systemd-boot configuration."
+        echo "You may need to add 'splash quiet' to your kernel parameters manually."
     fi
 
     echo "Regenerating initramfs..."
-    sudo mkinitcpio -P
-else
-    echo "Skipping automatic Plymouth configuration."
-fi
+    sudo mkinitcpio -P || pause_on_error "Failed to regenerate initramfs."
+}
 
 # 6. Install Specific Apps
 echo "Installing requested applications..."
