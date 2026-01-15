@@ -26,23 +26,27 @@ jobs:
 
     - name: Prepare ISO Files
       run: |
-        # Create a build directory based on the official 'releng' profile
+        # 1. Start with a clean official 'releng' profile
         cp -r /usr/share/archiso/configs/releng iso-build
         
-        # Overlay our custom configuration
-        # 1. Overwrite profile definition (Name, Label)
-        cp iso/profiledef.sh iso-build/profiledef.sh
+        # 2. Inject ONLY our custom files into the standard profile
+        # Auto-start wrapper
+        cp iso/airootfs/root/.zlogin iso-build/airootfs/root/.zlogin
         
-        # 2. Overlay airootfs (Config, .zlogin) - Recursive copy
-        cp -r iso/airootfs/* iso-build/airootfs/
+        # Archinstall defaults
+        cp iso/airootfs/root/config.json iso-build/airootfs/root/config.json
         
-        # NOTE: We intentionally DO NOT overwrite packages.x86_64.
-        # We use the standard 'releng' package list to ensure maximum hardware compatibility (drivers, tools).
-        # 'releng' includes standard tools + archinstall.
-        
-        # Ensure setup_arch.sh is in the ISO root
+        # Setup script
         cp setup_arch.sh iso-build/airootfs/root/setup_arch.sh
+        
+        # Set permissions
+        chmod +x iso-build/airootfs/root/.zlogin
         chmod +x iso-build/airootfs/root/setup_arch.sh
+
+    - name: Build Arch ISO
+      run: |
+        mkdir -p output
+        mkarchiso -v -w /tmp/archiso-work -o output iso-build
 
     - name: Build Arch ISO
       run: |
