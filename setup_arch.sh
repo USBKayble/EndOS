@@ -64,20 +64,60 @@ sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mir
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
 
-# Function to handle package installation with dynamic conflict resolution
+LOG_FILE="./setup_error.log"
+
+# Function to log messages
+log_msg() {
+    echo "$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+# Function to log errors
+log_error() {
+    echo "ERROR: $1" >&2
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] - $1" >> "$LOG_FILE"
+}
+
+# Function to pause on error
+pause_on_error() {
+    log_error "$1"
+    read -p "Press Enter to acknowledge and continue (or Ctrl+C to abort)..."
+}
+
+# Function to handle package installation with dynamic conflict resolution and smart checks
 install_with_conflict_resolution() {
-    local packages="$*"
+    local requested_packages=("$@")
+    local packages_to_install=()
+    
+    # Smart Check: Filter out already installed packages
+    for pkg in "${requested_packages[@]}"; do
+        if pacman -Qq "$pkg" &> /dev/null; then
+            echo "Skipping $pkg (already installed)"
+        else
+            packages_to_install+=("$pkg")
+        fi
+    done
+    
+    if [ ${#packages_to_install[@]} -eq 0 ]; then
+        echo "All packages are already installed. Skipping."
+        return 0
+    fi
+
+    local packages="${packages_to_install[*]}"
     local max_retries=5
     local retry_count=0
 
     while [ $retry_count -lt $max_retries ]; do
-        echo "Attempting installation (Try $((retry_count+1))/$max_retries)..."
+        echo "Attempting installation of: $packages (Try $((retry_count+1))/$max_retries)..."
         
         # Run pacman and capture both stdout and stderr
         set +e
         output=$(sudo pacman -Syu --noconfirm --needed $packages 2>&1)
         exit_code=$?
         set -e
+        
+        # Log the output to file for troubleshooting
+        echo "$output" >> "$LOG_FILE"
         
         if [ $exit_code -eq 0 ]; then
             echo "$output"
@@ -86,25 +126,22 @@ install_with_conflict_resolution() {
         fi
         
         echo "$output"
+        log_error "Installation failed via pacman. Check $LOG_FILE for details."
         
         # Check for specific conflict pattern ":: pkgA and pkgB are in conflict"
         conflict_line=$(echo "$output" | grep "are in conflict" | head -n 1)
         
         if [ -n "$conflict_line" ]; then
             echo "Conflict detected: $conflict_line"
+            log_msg "Conflict detected: $conflict_line"
+            
             # Extract package names (Assuming format ":: pkgA and pkgB are in conflict")
-            # We use awk to grab the 2nd and 4th words (adjusting for ":: ")
             pkgA=$(echo "$conflict_line" | awk '{print $2}')
             pkgB=$(echo "$conflict_line" | awk '{print $4}')
             
             # Determine which package to remove (the one currently installed)
             candidate=""
             if pacman -Qq "$pkgA" &>/dev/null && pacman -Qq "$pkgB" &>/dev/null; then
-                 # Both installed? This is rare for a conflict during install unless replacing.
-                 # We prefer to keep the one in our requested list, but logic is tricky.
-                 # Let's guess pkgB is the blocker if pkgA is the new one 'pipewire-jack'.
-                 # Actually, usually the one NOT in $packages is the target.
-                 # Simple approach: remove the one that matches the installed check.
                  candidate="$pkgB" 
             elif pacman -Qq "$pkgA" &>/dev/null; then
                  candidate="$pkgA"
@@ -119,22 +156,22 @@ install_with_conflict_resolution() {
                 rm_exit=$?
                 set -e
                 if [ $rm_exit -ne 0 ]; then
-                     echo "Failed to remove $candidate. Manual intervention required."
+                     pause_on_error "Failed to remove $candidate. Manual intervention required."
                      return 1
                 fi
                 retry_count=$((retry_count+1))
                 continue
             else
-                echo "Could not identify installed conflicting package. Manual intervention required."
+                pause_on_error "Could not identify installed conflicting package. Manual intervention required."
                 return 1
             fi
         else
-            echo "Installation failed with non-conflict error."
+            pause_on_error "Installation failed with non-conflict error (e.g., download failed). See $LOG_FILE."
             return 1
         fi
     done
     
-    echo "Max retries reached. Installation failed."
+    pause_on_error "Max retries reached. Installation failed."
     return 1
 }
 
@@ -158,7 +195,7 @@ else
     KERNEL_HEADERS="linux-headers"
 fi
 echo "Detected kernel: $KERNEL_RELEASE. Installing $KERNEL_HEADERS..."
-sudo pacman -S --noconfirm --needed "$KERNEL_HEADERS"
+install_with_conflict_resolution "$KERNEL_HEADERS"
 
 # 3. Install Yay (AUR Helper)
 if ! command -v yay &> /dev/null; then
@@ -176,40 +213,36 @@ fi
 echo "Detecting GPU..."
 if lspci -k | grep -A 2 -E "(VGA|3D)" | grep -iq "nvidia"; then
     echo "Nvidia GPU detected. Installing Nvidia drivers..."
-    sudo pacman -S --noconfirm --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings
+    install_with_conflict_resolution nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings
 elif lspci -k | grep -A 2 -E "(VGA|3D)" | grep -iq "amd"; then
     echo "AMD GPU detected. Installing AMD drivers..."
-    sudo pacman -S --noconfirm --needed mesa lib32-mesa xf86-video-amdgpu vulkan-radeon lib32-vulkan-radeon
+    install_with_conflict_resolution mesa lib32-mesa xf86-video-amdgpu vulkan-radeon lib32-vulkan-radeon
 elif lspci -k | grep -A 2 -E "(VGA|3D)" | grep -iq "intel"; then
     echo "Intel GPU detected. Installing Intel drivers..."
-    sudo pacman -S --noconfirm --needed mesa lib32-mesa xf86-video-intel vulkan-intel lib32-vulkan-intel
+    install_with_conflict_resolution mesa lib32-mesa xf86-video-intel vulkan-intel lib32-vulkan-intel
 else
     echo "No standard GPU detected or using default drivers (VM)."
 fi
 
 # 5. Bootscreen (Plymouth)
 echo "Installing Plymouth (Bootscreen)..."
-yay -S --noconfirm plymouth
+install_with_conflict_resolution plymouth
 
 echo "To enable Plymouth, we need to modify mkinitcpio and bootloader config."
 echo "Attempting automatic configuration..."
 
-# Function to pause on error
-pause_on_error() {
-    echo "Error encountered: $1"
-    read -p "Press Enter to acknowledge and continue (or Ctrl+C to abort)..."
-}
-
 # Plymouth Configuration Block
 {
     # Backup
-    sudo cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
-    [ -f /etc/default/grub ] && sudo cp /etc/default/grub /etc/default/grub.bak
+    [ ! -f /etc/mkinitcpio.conf.bak ] && sudo cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
+    [ -f /etc/default/grub ] && [ ! -f /etc/default/grub.bak ] && sudo cp /etc/default/grub /etc/default/grub.bak
     
     # Edit mkinitcpio: add 'plymouth' to HOOKS
     if ! grep -q "plymouth" /etc/mkinitcpio.conf; then
         echo "Adding plymouth hook to mkinitcpio..."
         sudo sed -i 's/udev/udev plymouth/' /etc/mkinitcpio.conf
+    else
+        echo "Plymouth hook already present in mkinitcpio."
     fi
      
     echo "Setting default theme to 'spinner'..."
@@ -224,6 +257,8 @@ pause_on_error() {
         echo "GRUB detected."
         if ! grep -q "splash quiet" /etc/default/grub; then
              sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="splash quiet /' /etc/default/grub
+        else
+             echo "GRUB splash/quiet parameters already present."
         fi
         echo "Regenerating GRUB config..."
         sudo grub-mkconfig -o /boot/grub/grub.cfg || pause_on_error "Failed to generate GRUB config."
@@ -248,8 +283,8 @@ pause_on_error() {
 
 # 6. Install Specific Apps
 echo "Installing requested applications..."
-# Official Repos
-sudo pacman -S --noconfirm --needed steam kitty dolphin
+# Official Repos (Swapped Dolphin for Thunar)
+install_with_conflict_resolution steam kitty thunar thunar-volman gvfs
 
 # AUR Packages
 echo "Installing AUR apps (this may take a while)..."
