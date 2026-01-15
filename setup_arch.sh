@@ -50,11 +50,16 @@ sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
-# Remove jack2 if present to avoid conflict with pipewire-jack
-if pacman -Qs jack2 > /dev/null; then
-    echo "Removing jack2 to replace with pipewire-jack..."
-    sudo pacman -Rdd --noconfirm jack2
-fi
+
+# Remove conflicting packages (Legacy Audio/Bluetooth stack)
+# This prevents conflicts when installing Pipewire and Wireplumber
+CONFLICTING_PACKAGES=("jack2" "jack" "pulseaudio" "pulseaudio-alsa" "pulseaudio-bluetooth" "pipewire-media-session")
+for pkg in "${CONFLICTING_PACKAGES[@]}"; do
+    if pacman -Qs "^$pkg$" > /dev/null; then
+        echo "Removing conflicting package: $pkg..."
+        sudo pacman -Rdd --noconfirm "$pkg"
+    fi
+done
 
 sudo pacman -Syu --noconfirm --needed base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils
 
