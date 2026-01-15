@@ -1,18 +1,12 @@
-# EndOS v2026.01.15
+# EndOS v2026.01.15-r2
 
-## Initial Release
+## Release Highlights
 
-- **Base**: Arch Linux (Minimal)
-- **Installer**: Automated `archinstall` configuration
-- **Post-Install**:
-    - Hyprland Desktop
-    - Thunar File Manager
-    - Pipewire Audio
-    - NVIDIA/AMD/Intel Drivers (Auto-detected)
-    - 0x0.st Logging Support
+- **Fix**: Resolved boot failure by using standard Arch `releng` profile.
+- **Branding**: ISO is now correctly labeled "EndOS".
+- **Infrastructure**: Builds now run on high-performance self-hosted runners.
 
-## How to Install
-1. Boot the ISO.
-2. Press Enter at the "Welcome to the EndOS Installer!" prompt.
-3. Wait for the system to reboot.
-4. Enjoy!
+## Installation
+1. Boot the ISO (EndOS).
+2. Follow the auto-start wizard.
+3. Enjoy your automated Hyprland setup!
