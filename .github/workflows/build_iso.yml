@@ -3,6 +3,8 @@ name: Build EndOS ISO
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'RELEASE_NOTES.md'
   workflow_dispatch:
 
 jobs:
@@ -44,6 +46,14 @@ jobs:
         mkdir -p output
         mkarchiso -v -w /tmp/archiso-work -o output iso-build
 
+    - name: Read Release Notes
+      id: release_notes
+      run: |
+        # Read the file content into a variable, handling newlines
+        echo "notes<<EOF" >> $GITHUB_OUTPUT
+        cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
@@ -53,12 +63,6 @@ jobs:
           setup_arch.sh
         name: EndOS Release ${{ github.run_number }}
         tag_name: v${{ github.run_number }}
-        body: |
-          Automated build of EndOS.
-          Date: ${{ github.event.head_commit.timestamp }}
-          
-          **Contains:**
-          - Arch Linux (Minimal)
-          - EndOS Setup Script (embedded as /root/setup_arch.sh)
+        body: ${{ steps.release_notes.outputs.notes }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
