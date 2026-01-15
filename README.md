@@ -37,3 +37,7 @@
 ## Future Plans
 
 The ultimate goal of EndOS is to evolve into a standalone **Arch Linux ISO**. This will allow users to boot directly into a live environment and install the fully customized EndOS experience without needing to install vanilla Arch first.
+
+## Credits
+
+*   **Dotfiles**: The stunning Hyprland configuration is provided by **[end-4/dots-hyprland](https://github.com/end-4/dots-hyprland)**. Used with permission/credit to the original creator.
