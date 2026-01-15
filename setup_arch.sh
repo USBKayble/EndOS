@@ -6,13 +6,26 @@
 
 set -e
 
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+    echo "Please do not run this script as root."
+    echo "Run it as a normal user with sudo privileges."
+    exit 1
+fi
+
 echo "Welcome to the Arch Linux Hyprland Setup Script."
 echo "This script will install Hyprland, dotfiles, drivers, and various apps."
-echo "Ensure you are running this on a fresh Arch Linux install."
+echo "Ensure you are running this on a fresh Arch Linux install with internet access."
 read -p "Press Enter to continue or Ctrl+C to abort..."
 
 # Sudo Keep-alive
 # Ask for sudo password upfront
+echo "Checking for sudo..."
+if ! command -v sudo &> /dev/null; then
+    echo "Sudo is not installed. Please install it first (pacman -S sudo) and add your user to the wheel group."
+    exit 1
+fi
+
 echo "Please enter your password to authorize the installation..."
 sudo -v
 
@@ -31,8 +44,10 @@ else
 fi
 
 # 2. System Update & Base Packages
-echo "Updating system and installing base-devel, git, wget, curl..."
-sudo pacman -Syu --noconfirm --needed base-devel git wget curl
+echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm..."
+sudo pacman -Syu --noconfirm --needed base-devel git wget curl networkmanager sddm
+sudo systemctl enable NetworkManager
+sudo systemctl enable sddm
 
 # 3. Install Yay (AUR Helper)
 if ! command -v yay &> /dev/null; then
@@ -158,6 +173,20 @@ bash <(curl -s https://ii.clsty.link/get)
 # 9. Configure SDDM Autologin
 echo "=========================================="
 echo "Configuring SDDM Autologin (Bypass Lock Screen)..."
+
+# Ensure Hyprland session file exists (just in case)
+if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
+    echo "Creating Hyprland session file..."
+    sudo mkdir -p /usr/share/wayland-sessions
+    sudo bash -c 'cat > /usr/share/wayland-sessions/hyprland.desktop <<EOF
+[Desktop Entry]
+Name=Hyprland
+Comment=Hyprland Session
+Exec=Hyprland
+Type=Application
+EOF'
+fi
+
 current_user=$(whoami)
 read -p "Enter username for autologin (default: $current_user): " autologin_user
 autologin_user=${autologin_user:-$current_user}
