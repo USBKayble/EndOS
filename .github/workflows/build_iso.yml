@@ -55,11 +55,6 @@ jobs:
         mkdir -p output
         mkarchiso -v -w /tmp/archiso-work -o output iso-build
 
-    - name: Build Arch ISO
-      run: |
-        mkdir -p output
-        mkarchiso -v -w /tmp/archiso-work -o output iso-build
-
     - name: Read Release Notes
       id: release_notes
       run: |
