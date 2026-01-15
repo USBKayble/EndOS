@@ -8,10 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    container:
+      image: archlinux:latest
+      options: --privileged
 
     steps:
+    - name: Install Archiso Tools
+      run: |
+        pacman -Sy --noconfirm archiso git
+
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -22,10 +27,9 @@ jobs:
         chmod +x iso/airootfs/root/setup_arch.sh
 
     - name: Build Arch ISO
-      uses: 2bndy5/action-archiso@v3
-      with:
-        profile_dir: iso
-        output_dir: output
+      run: |
+        mkdir -p output
+        mkarchiso -v -w /tmp/archiso-work -o output iso
 
     - name: Release
       uses: softprops/action-gh-release@v1
@@ -38,10 +42,10 @@ jobs:
         tag_name: v${{ github.run_number }}
         body: |
           Automated build of EndOS.
-          Date: ${{ steps.date.outputs.date }}
+          Date: ${{ github.event.head_commit.timestamp }}
           
           **Contains:**
           - Arch Linux (Minimal)
-          - EndOS Setup Script (embedded)
+          - EndOS Setup Script (embedded as /root/setup_arch.sh)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
