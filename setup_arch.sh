@@ -382,16 +382,16 @@ if [ $install_exit_code -ne 0 ]; then
          echo "Dotfiles installer exited with 143 (SIGTERM). This is expected if Hyprland is not running."
          echo "Assuming success and proceeding..."
     else
-        echo "==========================================
-The dotfiles installer exited with an error code ($install_exit_code)."
-        echo "This is frequently caused by 'HYPRLAND_INSTANCE_SIGNATURE not set' because Hyprland isn't running yet."
-        echo "If you saw that error, it is safe to ignore."
         echo "=========================================="
-        read -t 10 -p "Continue with SDDM/Autologin setup? (Y/n) " continue_choice
-        continue_choice=${continue_choice:-Y} # Default to Yes
+        echo "The dotfiles installer exited with an unexpected error code ($install_exit_code)."
+        echo "Please review the output above for details."
+        echo "If this was a critical failure, you may want to abort and investigate."
+        echo "=========================================="
+        read -t 15 -p "Continue with SDDM/Autologin setup? (y/N) " continue_choice
+        continue_choice=${continue_choice:-N} # Default to No for safety
         
         if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-            echo "Aborting setup."
+            echo "Aborting setup. Please report this issue."
             exit $install_exit_code
         fi
     fi
