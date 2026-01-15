@@ -6,46 +6,34 @@
 
 set -e
 
-# Check if running as root
+# Check if running as root - Warn but allow for ISO/Chroot usage
 if [ "$EUID" -eq 0 ]; then
-    echo "Please do not run this script as root."
-    echo "Run it as a normal user with sudo privileges."
-    exit 1
-fi
-
-echo "Welcome to the Arch Linux Hyprland Setup Script."
-echo "This script will install Hyprland, dotfiles, drivers, and various apps."
-echo "Ensure you are running this on a fresh Arch Linux install with internet access."
-read -p "Press Enter to continue or Ctrl+C to abort..."
-
-# Sudo Keep-alive (Robust)
-# Ask for password once, then keep sudo alive indefinitely
-echo "Checking for sudo..."
-if ! command -v sudo &> /dev/null; then
-    echo "Sudo is not installed. Please install it first (pacman -S sudo) and add your user to the wheel group."
-    exit 1
-fi
-
-while true; do
-    read -s -p "Please enter your sudo password: " USER_PASS
-    echo
-    if echo "$USER_PASS" | sudo -S -v 2>/dev/null; then
-        echo "Password accepted."
-        break
-    else
-        echo "Incorrect password. Please try again."
+    echo "Running as root. Sudo password prompts will be skipped."
+else
+    # Sudo Keep-alive (Robust) for non-root users
+    echo "Checking for sudo..."
+    if ! command -v sudo &> /dev/null; then
+        echo "Sudo is not installed. Please install it first (pacman -S sudo) and add your user to the wheel group."
+        exit 1
     fi
-done
 
-# Keep-alive: update existing sudo time stamp using the captured password
-# This ensures it never times out even if the script takes a long time
-while true; do 
-    echo "$USER_PASS" | sudo -S -v 2>/dev/null
-    sleep 60
-    kill -0 "$$" || exit
-done &
-KEEP_ALIVE_PID=$!
-trap "kill $KEEP_ALIVE_PID" EXIT
+    while true; do
+        read -s -p "Please enter your sudo password: " USER_PASS
+        echo
+        if echo "$USER_PASS" | sudo -S -v 2>/dev/null; then
+            echo "Password accepted."
+            break
+        else
+            echo "Incorrect password. Please try again."
+        fi
+    done
+    
+    # Keep-alive in background
+    (while true; do echo "$USER_PASS" | sudo -S -v; sleep 60; done) &
+    SUDO_PID=$!
+    trap "kill $SUDO_PID" EXIT
+fi
+
 
 # 1. Enable Multilib (needed for Steam)
 echo "Enabling multilib repository..."
