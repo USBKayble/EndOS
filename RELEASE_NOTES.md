@@ -1,10 +1,10 @@
-# EndOS Live-Beta-2
+# EndOS Live-Beta-3
 
 ## Release Highlights
 
+- **Fix**: Critical Fix - Restored missing dotfiles that caused Hyprland crash on boot.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
 - **New**: Plymouth Boot Splash integrated (Silent Boot).
-- **Restored**: Desktop packages were missing in Beta-1, now fully restored.
 - **Better UI**: Installer uses `gum` TUI.
 
 ## Installation
