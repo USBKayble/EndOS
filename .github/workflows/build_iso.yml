@@ -39,7 +39,7 @@ jobs:
         echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
 
         # Update and Install Tools
-        pacman -Sy --noconfirm archiso git grub syslinux dosfstools mtools wget unzip python
+        pacman -Sy --noconfirm archiso git grub syslinux dosfstools mtools wget unzip python base-devel
 
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -60,6 +60,64 @@ jobs:
         rm -rf iso-build/airootfs/usr/share/endos/dots
         mkdir -p iso-build/airootfs/usr/share/endos/dots
         git clone --recursive --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/usr/share/endos/dots
+
+        # 2.06 BUILD AUR PACKAGES
+        # We need to build AUR packages that are not in Chaotic-AUR.
+        # Create a builder user because makepkg cannot run as root.
+        useradd -m builder
+        echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+        chmod 777 .
+
+        # Install yay (pre-built bin from AUR)
+        su builder -c "
+            git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
+            cd /tmp/yay-bin
+            makepkg -si --noconfirm
+        "
+
+        # Get list of AUR-only packages
+        echo "Identifiying AUR packages..."
+        python util/extract_deps.py --aur-only iso-build/airootfs/usr/share/endos/dots/sdata/dist-arch > aur_deps.txt
+        cat aur_deps.txt
+
+        # Build them
+        mkdir -p repo
+        chown builder:builder repo
+        
+        echo "Building AUR packages..."
+        
+        # Check if we have AUR deps
+        if [ -s aur_deps.txt ]; then
+            su builder -c "
+                mkdir -p /tmp/aur-build
+                yay -S --noconfirm --builddir /tmp/aur-build \$(cat aur_deps.txt)
+                
+                # Find built packages and add to repo
+                find /tmp/aur-build -name '*.pkg.tar.zst' -exec cp {} repo/ \;
+                cd repo
+                repo-add endos-local.db.tar.gz *.pkg.tar.zst
+            "
+        else
+            echo "No AUR dependencies found. Skipping build."
+            # Create empty repo to prevent pacman errors if configured
+            su builder -c "
+                cd repo
+                repo-add endos-local.db.tar.gz
+            "
+        fi
+
+        # 2.07 CONFIGURE LOCAL REPO
+        # Add the local repo to mkarchiso's pacman.conf
+        # We must use file:/// URL style for local repo in build container
+        # NOTE: repo must be accessible INSIDE the chroot or mounted? 
+        # Ideally, we inject packages directly into the workdir or install them to airootfs directly?
+        # Actually, adding a custom repo to pacman.conf is the standard way.
+        
+        # We need to ensure correct pathing. 'repo' is in workspace root.
+        # mkarchiso runs relative to workspace.
+        REPO_PATH=\$(pwd)/repo
+        
+        sed -i '1i[endos-local]\nSigLevel = Optional TrustAll\nServer = file://'"\$REPO_PATH" iso-build/pacman.conf
         
         # 2.1 PATCH mkarchiso pacman.conf
         # The build tool uses this specific config file to resolve packages.
@@ -75,8 +133,11 @@ jobs:
         # We append our custom packages to the releng list.
         # We also extract dependencies from the cloned dots-hyprland repo.
         
-        echo "Extracting dependencies from dots-hyprland..."
-        python util/extract_deps.py iso-build/airootfs/usr/share/endos/dots/sdata/dist-arch >> iso-build/packages.x86_64
+        echo "Extracting Repo dependencies..."
+        python util/extract_deps.py --repo-only iso-build/airootfs/usr/share/endos/dots/sdata/dist-arch >> iso-build/packages.x86_64
+        
+        # Add AUR packages to package list
+        cat aur_deps.txt >> iso-build/packages.x86_64
         
         cat iso/packages.x86_64 >> iso-build/packages.x86_64
         sort -u -o iso-build/packages.x86_64 iso-build/packages.x86_64

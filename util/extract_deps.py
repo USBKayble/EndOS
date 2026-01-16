@@ -54,6 +54,22 @@ def main():
     
     print(f"Scanning {target_dir}...", file=sys.stderr)
     
+    # Sort and print
+    import argparse
+    import shutil
+    import subprocess
+
+    parser = argparse.ArgumentParser(description='Extract dependencies from PKGBUILDs')
+    parser.add_argument('directory', help='Directory to scan')
+    parser.add_argument('--repo-only', action='store_true', help='Output only packages found in configured repositories')
+    parser.add_argument('--aur-only', action='store_true', help='Output only packages NOT found in configured repositories (assumed AUR)')
+    args = parser.parse_args()
+
+    target_dir = args.directory
+    all_deps = set()
+    
+    print(f"Scanning {target_dir}...", file=sys.stderr)
+    
     # Simple recursive search for PKGBUILD
     # The structure is sdata/dist-arch/<package-name>/PKGBUILD
     pkgbuilds = glob.glob(os.path.join(target_dir, '**', 'PKGBUILD'), recursive=True)
@@ -63,16 +79,34 @@ def main():
         deps = parse_pkgbuild(pb)
         all_deps.update(deps)
 
-    # Filter out packages that are usually built locally or problematic
-    # The user repo has logic to remove some, but let's list what we found.
+    has_pacman = shutil.which('pacman') is not None
     
-    # Explicit exclusions based on install-deps.sh "remove_deprecated_dependencies" 
-    # or known patterns if needed. For now, output everything.
-    # We also might want to remove 'hyprland-git' if we prefer stable 'hyprland' 
-    # but the repo specifically requests what's in the PKGBUILD.
-    
+    if args.repo_only or args.aur_only:
+        if not has_pacman:
+            print("Error: pacman not found, cannot filter packages.", file=sys.stderr)
+            sys.exit(1)
+
+        repo_deps = set()
+        aur_deps = set()
+
+        print("Verifying package availability with pacman...", file=sys.stderr)
+        for dep in sorted(all_deps):
+            try:
+                # pacman -Si <pkg> returns 0 if found, 1 if not
+                subprocess.run(['pacman', '-Si', dep], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                repo_deps.add(dep)
+            except subprocess.CalledProcessError:
+                aur_deps.add(dep)
+        
+        if args.repo_only:
+            final_deps = repo_deps
+        else:
+            final_deps = aur_deps
+    else:
+        final_deps = all_deps
+
     # Sort and print
-    for dep in sorted(all_deps):
+    for dep in sorted(final_deps):
         print(dep)
 
 if __name__ == "__main__":
