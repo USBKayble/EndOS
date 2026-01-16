@@ -1,8 +1,9 @@
-# EndOS Live-Beta-9
+# EndOS Live-Beta-10
 
 ## Release Highlights
 
-- **Fix**: Critical Fix - Setup `XDG_RUNTIME_DIR` for `liveuser` to prevent Hyprland crash ("XDG_RUNTIME_DIR is not set").
+- **Fix**: Replaced GitHub cloning with direct ZIP download for dotfiles to ensure reliability.
+- **Fix**: Added build-time validation to fail immediately if dotfiles are missing (saves 20m wait time).
 - **Feature**: **Offline Install Support** - `setup_arch.sh` now detects packaged dotfiles on the ISO and installs them without internet.
 - **Improved**: `liveuser` session stability.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).

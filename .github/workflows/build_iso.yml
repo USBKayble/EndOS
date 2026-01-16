@@ -51,8 +51,23 @@ jobs:
         
         # 2.6 LIVE ENVIRONMENT: Dotfiles
         # Use a reliable system path instead of /etc/skel
-        mkdir -p iso-build/airootfs/usr/share/endos/dots
-        git clone --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/usr/share/endos/dots
+        # STRATEGY CHANGE: Use wget/unzip instead of git clone for better reliability in containers
+        mkdir -p iso-build/airootfs/usr/share/endos
+        
+        echo "Downloading dotfiles..."
+        wget -O dots.zip https://github.com/end-4/dots-hyprland/archive/refs/heads/main.zip
+        unzip -q dots.zip
+        mv dots-hyprland-main iso-build/airootfs/usr/share/endos/dots
+        rm dots.zip
+        
+        # CRITICAL: Verify content exists. Fail build if empty.
+        if [ -z "$(ls -A iso-build/airootfs/usr/share/endos/dots)" ]; then
+            echo "ERROR: Dotfiles directory is empty! Aborting build."
+            exit 1
+        else
+            echo "Dotfiles contents verified:"
+            ls -F iso-build/airootfs/usr/share/endos/dots
+        fi
         
         # 3. Branding: Rename ISO to EndOS
         # We modify the official profiledef.sh in-place to avoid breaking boot modes.
