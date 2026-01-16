@@ -10,6 +10,8 @@ set -e
 install_gum() {
     if ! command -v gum &> /dev/null; then
         echo "Installing gum for better UI..."
+        # We assume pacman is available and configured (setup script usually run on Arch)
+        # Use --noconfirm to avoid blocking
         sudo pacman -Sy --noconfirm gum &> /dev/null
     fi
 }
@@ -31,9 +33,10 @@ confirm() {
     gum confirm "$1" || exit 1
 }
 
-# Check if running as root - Warn but allow for ISO/Chroot usage
+# Check if running as root
 if [ "$EUID" -eq 0 ]; then
-    echo "Running as root. Sudo password prompts will be skipped."
+    echo "Running as root."
+    SUDO=""
 else
     # Sudo Keep-alive (Robust) for non-root users
     echo "Checking for sudo..."
@@ -63,22 +66,24 @@ else
     (while true; do echo "$SUDO_PASS" | sudo -S -v; sleep 60; done) &
     SUDO_PID=$!
     trap "kill $SUDO_PID" EXIT
+    SUDO="sudo"
 fi
 
 install_gum # Ensure gum is installed even if root
+
 echo "Enabling multilib repository..."
 if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
-    sudo bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
-    sudo pacman -Sy
+    $SUDO bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
+    $SUDO pacman -Sy
 else
     echo "Multilib seems to be enabled already."
 fi
 
 # 2. System Update & Base Packages
 echo "Updating mirrors with Reflector..."
-sudo pacman -Syu --noconfirm --needed reflector
-sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+$SUDO pacman -Syu --noconfirm --needed reflector
+$SUDO cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+$SUDO reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
 
@@ -164,44 +169,77 @@ install_with_conflict_resolution() {
     local retry_count=0
 
     while [ $retry_count -lt $max_retries ]; do
-        gum spin --spinner dot --title "Installing: $packages" -- sudo pacman -Syu --noconfirm --needed $packages 2>&1
-        output=$? # Only gets exit code of gum spin, we need a wrapper to capture output for logging...
-        # Gum spin consumes stdout/stderr.
-        # Alternative: run command, capture output, if fail display it.
-        
-        # Simplified for gum:
-        if sudo pacman -Syu --noconfirm --needed $packages &> /tmp/pacman_out; then
-             gum style --foreground 76 "Successfully installed: $packages"
-             return 0
-        else
-             output=$(cat /tmp/pacman_out)
-             # Fallback to existing logic using $output
-        fi
+        gum spin --spinner dot --title "Installing: $packages" -- $SUDO pacman -Syu --noconfirm --needed $packages 2>&1
+        output=$? # Capture exit code from gum spin (which captures the command's exit code)
 
-        # ... (rest of logic needs to adapt to file-based output capture for gum compatibility)
-        # For simplicity in this turn, let's keep the logic but wrap the user-facing part.
+        # Re-run command to capture output if needed? No, that's inefficient.
+        # Let's assume we capture it properly if we need to log.
+        # For this script's purposes, we'll execute directly for output capture first.
         
-        gum style --foreground 212 "Installing packages..."
-        set +e
-        output=$(sudo pacman -Syu --noconfirm --needed $packages 2>&1)
+        # Proper way to capture output AND use spinner:
+        # Create a temp file
+        temp_out=$(mktemp)
+        
+        # Start the spinner in background, waiting for a PID file or similar?
+        # Simpler: Use gum spin to run the command and redirect output to file
+        gum spin --spinner dot --title "Installing packages..." -- bash -c "$SUDO pacman -Syu --noconfirm --needed $packages &> $temp_out"
         exit_code=$?
-        set -e
+        output=$(cat $temp_out)
+        rm $temp_out
         
         if [ $exit_code -eq 0 ]; then
              gum style --foreground 76 "Installation successful."
              return 0
         fi
         
-        # ... Log only on failure ...
+        # Only log to file on failure
         echo "----------------------------------------" >> "$LOG_FILE"
-        echo "Failed: $packages" >> "$LOG_FILE"
+        echo "Failed command: $SUDO pacman -Syu --noconfirm --needed $packages" >> "$LOG_FILE"
         echo "$output" >> "$LOG_FILE"
         
         gum style --foreground 196 "Installation failed. Check $LOG_FILE."
-        # ... (Conflict logic same but use gum style for messages) ...
-        # ...
         
-        # (Shorten for tool call limit, focus on main blocks first)
+        # Check for specific conflict pattern ":: pkgA and pkgB are in conflict"
+        conflict_line=$(echo "$output" | grep "are in conflict" | head -n 1)
+        
+        if [ -n "$conflict_line" ]; then
+            echo "Conflict detected: $conflict_line"
+            log_msg "Conflict detected: $conflict_line"
+            
+            # Extract package names (Assuming format ":: pkgA and pkgB are in conflict")
+            pkgA=$(echo "$conflict_line" | awk '{print $2}')
+            pkgB=$(echo "$conflict_line" | awk '{print $4}')
+            
+            # Determine which package to remove (the one currently installed)
+            candidate=""
+            if pacman -Qq "$pkgA" &>/dev/null && pacman -Qq "$pkgB" &>/dev/null; then
+                 candidate="$pkgB" 
+            elif pacman -Qq "$pkgA" &>/dev/null; then
+                 candidate="$pkgA"
+            elif pacman -Qq "$pkgB" &>/dev/null; then
+                 candidate="$pkgB"
+            fi
+            
+            if [ -n "$candidate" ]; then
+                echo "Attempting to resolve conflict by removing existing package: $candidate..."
+                set +e
+                $SUDO pacman -Rdd --noconfirm "$candidate"
+                rm_exit=$?
+                set -e
+                if [ $rm_exit -ne 0 ]; then
+                     pause_on_error "Failed to remove $candidate. Manual intervention required."
+                     return 1
+                fi
+                retry_count=$((retry_count+1))
+                continue
+            else
+                pause_on_error "Could not identify installed conflicting package. Manual intervention required."
+                return 1
+            fi
+        else
+            pause_on_error "Installation failed with non-conflict error (e.g., download failed). See $LOG_FILE."
+            return 1
+        fi
     done
     return 1
 }
@@ -210,14 +248,13 @@ header "Updating system and installing base packages..."
 install_with_conflict_resolution base-devel git wget curl networkmanager sddm archlinux-keyring openssh pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber bluez bluez-utils github-cli
 
 # Enable basic services
-# Enable basic services
 header "Enabling NetworkManager, SDDM, SSH, and Bluetooth..."
-gum spin --spinner dot --title "Enabling services..." -- bash -c '
-sudo systemctl enable NetworkManager
-sudo systemctl enable sddm
-sudo systemctl enable sshd
-sudo systemctl enable bluetooth
-'
+gum spin --spinner dot --title "Enabling services..." -- bash -c "
+$SUDO systemctl enable NetworkManager
+$SUDO systemctl enable sddm
+$SUDO systemctl enable sshd
+$SUDO systemctl enable bluetooth
+"
 
 # Detect Kernel for Headers
 KERNEL_RELEASE=$(uname -r)
@@ -232,21 +269,33 @@ header "Detected kernel: $KERNEL_RELEASE"
 gum spin --title "Installing $KERNEL_HEADERS..." -- install_with_conflict_resolution "$KERNEL_HEADERS"
 
 # 3. Install Yay (AUR Helper)
-# 3. Install Yay (AUR Helper)
+header "Installing Yay..."
 if ! command -v yay &> /dev/null; then
-    header "Installing Yay..."
-    gum spin --title "Cloning and building Yay..." -- bash -c '
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si --noconfirm
-    cd ..
-    rm -rf yay
-    '
+    # Special handling for Root: makepkg cannot run as root
+    if [ "$EUID" -eq 0 ]; then
+        echo "Detected root. Creating temporary 'builder' user for AUR..."
+        useradd -m builder
+        echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+        
+        gum spin --title "Building Yay as 'builder' user..." -- bash -c "
+        su builder -c 'git clone https://aur.archlinux.org/yay.git /tmp/yay && cd /tmp/yay && makepkg -si --noconfirm'
+        "
+        
+        # Cleanup
+        userdel -r builder
+    else
+        gum spin --title "Building Yay..." -- bash -c "
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm
+        cd ..
+        rm -rf yay
+        "
+    fi
 else
     gum style --foreground 240 "Yay is already installed."
 fi
 
-# 4. GPU Drivers (Auto-Detection)
 # 4. GPU Drivers (Auto-Detection)
 header "Detecting GPU..."
 if lspci -k | grep -A 2 -E "(VGA|3D)" | grep -iq "nvidia"; then
@@ -263,70 +312,67 @@ else
 fi
 
 # 5. Bootscreen (Plymouth)
-# 5. Bootscreen (Plymouth)
 header "Installing Plymouth (Bootscreen)..."
 install_with_conflict_resolution plymouth
 
 gum style "Configuring Plymouth..."
-gum spin --title "Updating boot config..." -- bash -c '
+gum spin --title "Updating boot config..." -- bash -c "
 
 # Plymouth Configuration Block
 {
     # Backup
-    [ ! -f /etc/mkinitcpio.conf.bak ] && sudo cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
-    [ -f /etc/default/grub ] && [ ! -f /etc/default/grub.bak ] && sudo cp /etc/default/grub /etc/default/grub.bak
+    [ ! -f /etc/mkinitcpio.conf.bak ] && $SUDO cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
+    [ -f /etc/default/grub ] && [ ! -f /etc/default/grub.bak ] && $SUDO cp /etc/default/grub /etc/default/grub.bak
     
     # Edit mkinitcpio: add 'plymouth' to HOOKS
-    if ! grep -q "plymouth" /etc/mkinitcpio.conf; then
-        echo "Adding plymouth hook to mkinitcpio..."
-        sudo sed -i 's/udev/udev plymouth/' /etc/mkinitcpio.conf
+    if ! grep -q 'plymouth' /etc/mkinitcpio.conf; then
+        echo 'Adding plymouth hook to mkinitcpio...'
+        $SUDO sed -i 's/udev/udev plymouth/' /etc/mkinitcpio.conf
     else
-        echo "Plymouth hook already present in mkinitcpio."
+        echo 'Plymouth hook already present in mkinitcpio.'
     fi
      
-    echo "Setting default theme to 'spinner'..."
-    sudo plymouth-set-default-theme -R spinner
+    echo \"Setting default theme to 'spinner'...\"
+    $SUDO plymouth-set-default-theme -R spinner
 
     # Detect Bootloader
-    if [ -d "/sys/firmware/efi" ]; then
-        echo "EFI system detected."
+    if [ -d '/sys/firmware/efi' ]; then
+        echo 'EFI system detected.'
     fi
 
-    if command -v grub-mkconfig &> /dev/null && [ -f "/boot/grub/grub.cfg" ]; then
-        echo "GRUB detected."
-        if ! grep -q "splash quiet" /etc/default/grub; then
-             sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="splash quiet /' /etc/default/grub
+    if command -v grub-mkconfig &> /dev/null && [ -f '/boot/grub/grub.cfg' ]; then
+        echo 'GRUB detected.'
+        if ! grep -q 'splash quiet' /etc/default/grub; then
+             $SUDO sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=\"/GRUB_CMDLINE_LINUX_DEFAULT=\"splash quiet /' /etc/default/grub
         else
-             echo "GRUB splash/quiet parameters already present."
+             echo 'GRUB splash/quiet parameters already present.'
         fi
-        echo "Regenerating GRUB config..."
-        sudo grub-mkconfig -o /boot/grub/grub.cfg || pause_on_error "Failed to generate GRUB config."
+        echo 'Regenerating GRUB config...'
+        $SUDO grub-mkconfig -o /boot/grub/grub.cfg || exit 1 # pause_on_error cannot be called inside subshell easily?
 
     elif command -v bootctl &> /dev/null && bootctl status &> /dev/null; then
-        echo "systemd-boot detected."
-        echo "Attempting to add 'splash quiet' to systemd-boot entries..."
+        echo 'systemd-boot detected.'
+        echo 'Attempting to add splash quiet to systemd-boot entries...'
         for entry in /boot/loader/entries/*.conf; do
-            if grep -q "options" "$entry" && ! grep -q "splash quiet" "$entry"; then
-                sudo sed -i '/^options/ s/$/ splash quiet/' "$entry"
-                echo "Updated $entry"
+            if grep -q 'options' \"\$entry\" && ! grep -q 'splash quiet' \"\$entry\"; then
+                $SUDO sed -i '/^options/ s/$/ splash quiet/' \"\$entry\"
+                echo \"Updated \$entry\"
             fi
         done
     else
-        echo "Could not detect GRUB or systemd-boot configuration."
-        echo "You may need to add 'splash quiet' to your kernel parameters manually."
+        echo 'Could not detect GRUB or systemd-boot configuration.'
     fi
 
-    echo "Regenerating initramfs..."
-    sudo mkinitcpio -P || pause_on_error "Failed to regenerate initramfs."
+    echo 'Regenerating initramfs...'
+    $SUDO mkinitcpio -P || exit 1
 }
+"
 
-# 6. Install Specific Apps
 # 6. Install Specific Apps
 header "Installing Requested Applications..."
 # Official Repos (Swapped Dolphin for Thunar)
 install_with_conflict_resolution steam kitty thunar thunar-volman gvfs
 
-# AUR Packages
 # AUR Packages
 header "Installing AUR apps..."
 gum match --text "Installing AUR packages:" "This may take a while..."
@@ -334,12 +380,12 @@ yay -S --noconfirm spotify spicetify-cli millennium-bin vesktop zen-browser-bin
 
 # Spicetify Permissions Fix
 echo "Applying Spicetify permissions fix..."
-sudo chmod a+wr /opt/spotify
-sudo chmod a+wr /opt/spotify/Apps -R
+$SUDO chmod a+wr /opt/spotify
+$SUDO chmod a+wr /opt/spotify/Apps -R
 
 # 7. Automatic Updates (Pacman only)
 echo "Setting up automatic updates (Systemd timer for Pacman)..."
-sudo bash -c 'cat > /etc/systemd/system/autoupdate.service <<EOF
+$SUDO bash -c 'cat > /etc/systemd/system/autoupdate.service <<EOF
 [Unit]
 Description=Automatic System Update
 
@@ -348,7 +394,7 @@ Type=oneshot
 ExecStart=/usr/bin/pacman -Syu --noconfirm
 EOF'
 
-sudo bash -c 'cat > /etc/systemd/system/autoupdate.timer <<EOF
+$SUDO bash -c 'cat > /etc/systemd/system/autoupdate.timer <<EOF
 [Unit]
 Description=Run automatic system update daily
 
@@ -360,22 +406,56 @@ Persistent=true
 WantedBy=timers.target
 EOF'
 
-sudo systemctl enable --now autoupdate.timer
-sudo systemctl enable --now autoupdate.timer
+$SUDO systemctl enable --now autoupdate.timer
 gum style --foreground 76 "Automatic updates enabled (daily)."
 
 # 8. Install Dotfiles (End-4/dots-hyprland)
-# 8. Install Dotfiles (End-4/dots-hyprland)
 header "End-4 Dotfiles Installation"
 
+# Detect Target User (if running as root in chroot)
+TARGET_USER=$(whoami)
+if [ "$EUID" -eq 0 ]; then
+    # Try to detect the first regular user in /home
+    DETECTED_USER=$(ls /home | head -n 1)
+    if [ -n "$DETECTED_USER" ]; then
+        TARGET_USER="$DETECTED_USER"
+    fi
+    gum style --foreground 240 "Running as root. Detected target user: $TARGET_USER"
+fi
+
+# Confirm user
+TARGET_USER=$(gum input --placeholder "Install dotfiles for user" --value "$TARGET_USER")
+TARGET_HOME=$(eval echo "~$TARGET_USER")
+
+gum style "Installing dotfiles for $TARGET_USER ($TARGET_HOME)..."
+
 # Remove existing dir if it exists to avoid conflicts
-rm -rf ~/dots-hyprland-temp
-gum spin --title "Cloning dotfiles..." -- git clone --depth 1 https://github.com/end-4/dots-hyprland.git ~/dots-hyprland-temp
-cd ~/dots-hyprland-temp
+rm -rf $TARGET_HOME/dots-hyprland-temp
+
+# Clone as the target user to ensure permissions
+gum spin --title "Cloning dotfiles..." -- sudo -u $TARGET_USER git clone --depth 1 https://github.com/end-4/dots-hyprland.git $TARGET_HOME/dots-hyprland-temp
 
 echo "Running dotfiles installer..."
+# Run installer as target user
+# We need to allow it to run sudo inside?
+# If we run as user, they will be prompted for sudo password.
+# We are currently root (in chroot).
+# If we 'su - $TARGET_USER', we drop privs.
+# The installer needs to install packages.
+# We should probably run the INSTALLER as root, but specify the USER target? 
+# OR: Run as user, and let them sudo.
+# In a chroot/ISO setup, sudo might not be configured for passwordless.
+# BUT we just configured sudoers for builder? No, that was temp.
+# We should ensure the user is in wheel.
+# The archinstall config puts user in wheel.
+# Let's run as user. If it prompts, it prompts.
+# But we are in a non-interactive gum session? gum spin hides input.
+# We CANNOT use gum spin for interactive scripts.
+
+cd $TARGET_HOME/dots-hyprland-temp
 set +e 
-./setup install
+# Use 'su' to run as user. Standard input needs to be available.
+su $TARGET_USER -c "./setup install"
 install_exit_code=$?
 set -e
 
@@ -399,8 +479,7 @@ if [ $install_exit_code -ne 0 ]; then
     fi
 fi
 
-cd ..
-rm -rf ~/dots-hyprland-temp
+rm -rf $TARGET_HOME/dots-hyprland-temp
 
 # 9. Configure SDDM Autologin
 echo "==========================================
@@ -409,8 +488,8 @@ Configuring SDDM Autologin (Bypass Lock Screen)..."
 # Ensure Hyprland session file exists (just in case)
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
     echo "Creating Hyprland session file..."
-    sudo mkdir -p /usr/share/wayland-sessions
-    sudo bash -c 'cat > /usr/share/wayland-sessions/hyprland.desktop <<EOF
+    $SUDO mkdir -p /usr/share/wayland-sessions
+    $SUDO bash -c 'cat > /usr/share/wayland-sessions/hyprland.desktop <<EOF
 [Desktop Entry]
 Name=Hyprland
 Comment=Hyprland Session
@@ -419,24 +498,22 @@ Type=Application
 EOF'
 fi
 
-current_user=$(whoami)
-autologin_user=$(gum input --placeholder "Enter username for autologin (default: $current_user)" --value "$current_user")
-autologin_user=${autologin_user:-$current_user}
+autologin_user=$(gum input --placeholder "Enter username for autologin" --value "$TARGET_USER")
 
 echo "Setting up autologin for user: $autologin_user"
 if [ ! -d "/etc/sddm.conf.d" ]; then
-    sudo mkdir -p /etc/sddm.conf.d
+    $SUDO mkdir -p /etc/sddm.conf.d
 fi
 
 # Force write the autologin config
-sudo bash -c "cat > /etc/sddm.conf.d/autologin.conf <<EOF
+$SUDO bash -c "cat > /etc/sddm.conf.d/autologin.conf <<EOF
 [Autologin]
 User=$autologin_user
 Session=hyprland.desktop
 EOF"
 
 # Ensure correct permissions
-sudo chmod 644 /etc/sddm.conf.d/autologin.conf
+$SUDO chmod 644 /etc/sddm.conf.d/autologin.conf
 echo "SDDM Autologin configured."
 
 echo "==========================================
