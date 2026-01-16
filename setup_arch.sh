@@ -371,12 +371,14 @@ gum spin --title "Updating boot config..." -- bash -c "
 # 6. Install Specific Apps
 header "Installing Requested Applications..."
 # Official Repos (Swapped Dolphin for Thunar)
-install_with_conflict_resolution steam kitty thunar thunar-volman gvfs
+# Official Repos (Swapped Dolphin for Thunar)
+# Added dependencies for end-4 dots: aylurs-gtk-shell hypridle hyprlock swww python-pywal imagemagick cliphist wl-clipboard grim slurp swappy
+install_with_conflict_resolution steam kitty thunar thunar-volman gvfs hypridle hyprlock python-pywal imagemagick cliphist wl-clipboard grim slurp swappy network-manager-applet btop fuzzel
 
 # AUR Packages
 header "Installing AUR apps..."
 gum match --text "Installing AUR packages:" "This may take a while..."
-yay -S --noconfirm spotify spicetify-cli millennium-bin vesktop zen-browser-bin
+yay -S --noconfirm spotify spicetify-cli millennium-bin vesktop zen-browser-bin aylurs-gtk-shell swww
 
 # Spicetify Permissions Fix
 echo "Applying Spicetify permissions fix..."
@@ -432,65 +434,58 @@ gum style "Installing dotfiles for $TARGET_USER ($TARGET_HOME)..."
 # Remove existing dir if it exists to avoid conflicts
 rm -rf $TARGET_HOME/dots-hyprland-temp
 
-# Check for local "Offline" Source (packaged on ISO)
-OFFLINE_DOTS="/usr/share/endos/dots"
-
 if [ -d "$OFFLINE_DOTS" ]; then
     gum style --foreground 76 "Offline source detected at $OFFLINE_DOTS. Installing from ISO..."
-    # Local Copy
-    cp -a "$OFFLINE_DOTS" "$TARGET_HOME/dots-hyprland-temp"
-    # Ensure ownership for the installer to run correctly
-    chown -R $TARGET_USER:$TARGET_USER "$TARGET_HOME/dots-hyprland-temp"
+    
+    # Handle subdir if present
+    DETECTED_SRC="$OFFLINE_DOTS"
+    if [ -d "$OFFLINE_DOTS/dots" ]; then
+         DETECTED_SRC="$OFFLINE_DOTS/dots"
+    fi
+    
+    # Smart Copy Logic
+    mkdir -p "$TARGET_HOME/.config"
+    mkdir -p "$TARGET_HOME/dots-hyprland-temp" # Still needed? Maybe just direct copy is better if we trust the structure.
+    
+    # Actually, setup_arch.sh usually RUNS the setup script.
+    # The user provided setup script does 'install-files'.
+    # If we want to skip the setup script and manually install (fast/offline):
+    
+    echo "Installing configs directly..."
+    if [ -d "$DETECTED_SRC/.config" ]; then
+        cp -a "$DETECTED_SRC/." "$TARGET_HOME/"
+    elif [ -d "$DETECTED_SRC/hypr" ]; then
+        cp -a "$DETECTED_SRC/." "$TARGET_HOME/.config/"
+    else
+         cp -a "$DETECTED_SRC/." "$TARGET_HOME/.config/"
+    fi
+    
+    # Ensure ownership
+    chown -R $TARGET_USER:$TARGET_USER "$TARGET_HOME"
+    
 else
     # Online Clone
     gum spin --title "Cloning dotfiles from GitHub..." -- sudo -u $TARGET_USER git clone --depth 1 https://github.com/end-4/dots-hyprland.git $TARGET_HOME/dots-hyprland-temp
 fi
 
-echo "Running dotfiles installer..."
-# Run installer as target user
-# We need to allow it to run sudo inside?
-# If we run as user, they will be prompted for sudo password.
-# We are currently root (in chroot).
-# If we 'su - $TARGET_USER', we drop privs.
-# The installer needs to install packages.
-# We should probably run the INSTALLER as root, but specify the USER target? 
-# OR: Run as user, and let them sudo.
-# In a chroot/ISO setup, sudo might not be configured for passwordless.
-# BUT we just configured sudoers for builder? No, that was temp.
-# We should ensure the user is in wheel.
-# The archinstall config puts user in wheel.
-# Let's run as user. If it prompts, it prompts.
-# But we are in a non-interactive gum session? gum spin hides input.
-# We CANNOT use gum spin for interactive scripts.
+# Skip the "setup install" runner if we did offline install?
+# The original script ran ./setup install.
+# If we did online clone, we have the repo in temps.
+# If we did offline copy, we essentially INSTALLED strictly the files.
+# We might skip the ./setup execution for offline mode to be safe/fast/no-internet.
 
-cd $TARGET_HOME/dots-hyprland-temp
-set +e 
-# Use 'su' to run as user. Standard input needs to be available.
-su $TARGET_USER -c "./setup install"
-install_exit_code=$?
-set -e
-
-if [ $install_exit_code -ne 0 ]; then
-    if [ $install_exit_code -eq 143 ]; then
-         echo "Dotfiles installer exited with 143 (SIGTERM). This is expected if Hyprland is not running."
-         echo "Assuming success and proceeding..."
-    else
-        echo "=========================================="
-        echo "The dotfiles installer exited with an unexpected error code ($install_exit_code)."
-        echo "Please review the output above for details."
-        echo "If this was a critical failure, you may want to abort and investigate."
-        echo "=========================================="
-        read -t 15 -p "Continue with SDDM/Autologin setup? (y/N) " continue_choice
-        continue_choice=${continue_choice:-N} # Default to No for safety
-        
-        if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
-            echo "Aborting setup. Please report this issue."
-            exit $install_exit_code
-        fi
-    fi
+if [ ! -d "$OFFLINE_DOTS" ]; then
+    echo "Running dotfiles installer (Online Mode)..."
+    cd $TARGET_HOME/dots-hyprland-temp
+    set +e 
+    su $TARGET_USER -c "./setup install"
+    install_exit_code=$?
+    set -e
+    rm -rf $TARGET_HOME/dots-hyprland-temp
+else
+    echo "Offline install complete. Skipped upstream installer script."
+    install_exit_code=0
 fi
-
-rm -rf $TARGET_HOME/dots-hyprland-temp
 
 # 9. Configure SDDM Autologin
 echo "==========================================

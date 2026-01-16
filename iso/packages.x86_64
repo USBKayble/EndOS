@@ -1,9 +1,7 @@
 # --- EndOS Desktop ---
 hyprland
 kitty
-waybar
-wofi
-dunst
+fuzzel
 pipewire
 pipewire-alsa
 pipewire-pulse
@@ -14,6 +12,21 @@ bluez
 bluez-utils
 gum
 plymouth
+# --- Hyprland Extras (Required for end-4 dots) ---
+aylurs-gtk-shell
+hypridle
+hyprlock
+swww
+python-pywal
+imagemagick
+# --- Utilities ---
+cliphist
+wl-clipboard
+grim
+slurp
+swappy
+network-manager-applet
+btop
 # --- Fonts & Themes ---
 ttf-jetbrains-mono-nerd
 noto-fonts

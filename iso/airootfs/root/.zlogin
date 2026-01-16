@@ -16,13 +16,33 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
         echo "Setting up dotfiles for $LIVE_USER..."
         DOTS_SRC="/usr/share/endos/dots"
         
-        if [ -d "$DOTS_SRC" ]; then
-            # The repository has a 'dots' subdirectory containing the actual config
+        # Smart Detect: Check for 'dots' subdirectory
+        if [ -d "$DOTS_SRC/dots" ]; then
             DOTS_SUBDIR="$DOTS_SRC/dots"
-            
-            if [ -d "$DOTS_SUBDIR" ]; then
+        else
+            DOTS_SUBDIR="$DOTS_SRC"
+        fi
+
+        if [ -d "$DOTS_SUBDIR" ]; then
                 echo "Deploying dotfiles from $DOTS_SUBDIR..."
-                cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/" 2>/dev/null
+                
+                # Smart Detect: Where should we copy?
+                if [ -d "$DOTS_SUBDIR/.config" ]; then
+                    # Structure: dots/.config/hypr -> ~/ (classic stow)
+                    echo "Detailed structure detected: dots/.config -> copying to ~/"
+                    cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/" 2>/dev/null
+                elif [ -d "$DOTS_SUBDIR/hypr" ]; then
+                    # Structure: dots/hypr -> ~/.config/ (flat config dir)
+                    echo "Flat structure detected: dots/hypr -> copying to ~/.config/"
+                    mkdir -p "$LIVE_HOME/.config"
+                    cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/.config/" 2>/dev/null
+                else
+                    # Fallback
+                    echo "Unknown structure. Copying to ~/.config/ as a best guess..."
+                    mkdir -p "$LIVE_HOME/.config"
+                    cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/.config/" 2>/dev/null
+                fi
+                
             else
                 echo "WARNING: $DOTS_SUBDIR not found. Falling back to root copy..."
                 cp -a "$DOTS_SRC/." "$LIVE_HOME/" 2>/dev/null
