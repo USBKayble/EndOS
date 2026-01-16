@@ -350,6 +350,24 @@ else
     gum style --foreground 190 "No standard GPU detected or using default drivers (VM)."
 fi
 
+# 4.5 Dotfiles Specific Setup (Groups, Modules, Services)
+header "Configuring system for dotfiles compatibility..."
+gum spin --spinner dot --title "Applying system tweaks..." -- bash -c "
+# Groups
+$SUDO usermod -aG video,input,uucp $USER
+
+# Kernel Modules (i2c for brightness/ddcutil)
+echo 'i2c-dev' | $SUDO tee /etc/modules-load.d/i2c-dev.conf
+echo 'uinput' | $SUDO tee /etc/modules-load.d/uinput.conf
+
+# Udev Rules (for ydotool/uinput)
+echo 'KERNEL==\"uinput\", GROUP=\"input\", MODE=\"0660\", OPTIONS+=\"static_node=uinput\"' | $SUDO tee /etc/udev/rules.d/99-ydotool.rules
+
+# Enable ydotool service (System-wide or User - dotfiles usually want user but system-wide daemon often works better)
+# The dotfiles script uses a user service linked to system service.
+# We will ensure the socket is accessible.
+"
+
 # 5. Bootscreen (Plymouth)
 header "Installing Plymouth (Bootscreen)..."
 install_with_conflict_resolution plymouth

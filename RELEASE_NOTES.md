@@ -2,18 +2,11 @@
 
 ## Release Highlights
 
-- **Debloat**: Removed `waybar`, `wofi`, `dunst` (redundant with AGS). Added `fuzzel` path as fallback.
-- **Dependencies**: Added `aylurs-gtk-shell` (AGS) and `swww` via **Chaotic AUR** (Live ISO).
-- **Installer**: `setup_arch.sh` installs AGS/swww via `yay`.
-- **Fix**: Resolves missing dotfiles issue in Live ISO by pre-seeding `dots-hyprland` into `/usr/share/endos/dots`.
-- **Fix**: Ensures `setup_arch.sh` is present in `/root` for easier access and offline installation capability.
-- **Improved**: Live environment now correctly sources configuration from the pre-seeded directory.
-- **Offline Support**: `setup_arch.sh` now auto-detects offline mode, skipping mirror updates and using pre-seeded dotfiles.
-- **Drivers**: Added `mesa`, `vulkan`, `xf86-video`, and **Nvidia DKMS** drivers for comprehensive offline hardware support.
-- **UX**: Added "Install EndOS" desktop shortcut which launches the new offline-capable disk installer wrapper.
-- **VMs**: Added conditional hardware cursor logic to `.zlogin` for better performance on real hardware while preserving VM compatibility.
-- **Multilib**: Added multilib support to the ISO for 32-bit driver support (lib32-mesa, etc.)
-- **Packages**: Removed a rundundant network package.
+- **Build Fixes**: Enabled `multilib` repository and resolved `broadcom-wl` package conflicts.
+- **Build Workflow**: Updated to use recursive local file copy and removed external downloads for reliability.
+- **Installer**: Added `install_to_disk.sh` wrapper to ensure offline files are copied to the target system during disk install.
+- **Dotfiles**: Added missing dependencies (`ydotool`, `ddcutil`, `brightnessctl`) and configured `input`/`i2c` groups and modules.
+- **Core**: Verified and added essential `base`, `linux`, `linux-firmware` packages to ensure ISO bootability.
 
 ## Installation
 1. Boot the ISO (EndOS).

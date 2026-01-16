@@ -21,6 +21,9 @@ bluez
 bluez-utils
 gum
 plymouth
+ydotool
+ddcutil
+brightnessctl
 # --- Hyprland Extras (Required for end-4 dots) ---
 chaotic-keyring
 chaotic-mirrorlist
