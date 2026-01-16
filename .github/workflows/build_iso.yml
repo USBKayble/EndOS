@@ -44,12 +44,7 @@ jobs:
         # This ensures we keep all bootloader/kernel packages required for the ISO to work.
         cat iso/packages.x86_64 >> iso-build/packages.x86_64
         
-        # 2.6 LIVE ENVIRONMENT: Dotfiles
-        # Clone end-4 dotfiles directly into /etc/skel so new users (and root) get them.
-        git clone --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/etc/skel/dots-hyprland
-        
         # 3. Branding: Rename ISO to EndOS
-        # We modify the official profiledef.sh in-place to avoid breaking boot modes.
         # We modify the official profiledef.sh in-place to avoid breaking boot modes.
         sed -i 's/iso_name="archlinux"/iso_name="EndOS"/' iso-build/profiledef.sh
         sed -i 's/iso_label="ARCH_$(date +%Y%m)"/iso_label="ENDOS_$(date +%Y%m)"/' iso-build/profiledef.sh

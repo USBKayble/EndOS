@@ -1,26 +1,10 @@
 # --- EndOS Desktop ---
-hyprland
-kitty
-waybar
-wofi
-dunst
 pipewire
 pipewire-alsa
-pipewire-pulse
 wireplumber
-thunar
-gvfs
 bluez
 bluez-utils
 # --- Fonts & Themes ---
-ttf-jetbrains-mono-nerd
-noto-fonts
-noto-fonts-emoji
-papirus-icon-theme
 # --- Tools ---
 git
-neovim
 nano
-htop
-fastfetch
-firefox
