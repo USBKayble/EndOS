@@ -59,6 +59,13 @@ jobs:
         # Setup script (still useful for installing to disk)
         cp setup_arch.sh iso-build/airootfs/root/setup_arch.sh
         
+        # 2.1 PATCH mkarchiso pacman.conf
+        # The build tool uses this specific config file to resolve packages.
+        # We must add Chaotic AUR here so it can find AGS/swww.
+        echo "" >> iso-build/pacman.conf
+        echo "[chaotic-aur]" >> iso-build/pacman.conf
+        echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> iso-build/pacman.conf
+        
         # 2.5 MERGE Package Lists
         # We append our custom packages to the releng list instead of replacing it.
         # This ensures we keep all bootloader/kernel packages required for the ISO to work.

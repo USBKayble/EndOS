@@ -13,6 +13,8 @@ bluez-utils
 gum
 plymouth
 # --- Hyprland Extras (Required for end-4 dots) ---
+chaotic-keyring
+chaotic-mirrorlist
 aylurs-gtk-shell
 hypridle
 hyprlock
