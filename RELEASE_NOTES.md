@@ -1,8 +1,9 @@
-# EndOS Live-Beta-5
+# EndOS Live-Beta-6
 
 ## Release Highlights
 
-- **Fix**: Changed dotfiles injection path to `/usr/share/endos/dots` to avoid `/etc/skel` permissions/visibility issues.
+- **Fix**: Fixed critical bug where hidden dotfiles (like `.config`) were not being copied to the user home directory.
+- **Improved**: Dotfiles now injected from `/usr/share/endos/dots` for better stability.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
 - **New**: Plymouth Boot Splash integrated (Silent Boot).
 - **Better UI**: Installer uses `gum` TUI.

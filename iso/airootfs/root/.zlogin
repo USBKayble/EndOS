@@ -10,8 +10,11 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
         
         if [ -d "$DOTS_SRC" ]; then
             echo "Deploying dotfiles from $DOTS_SRC..."
-            cp -r "$DOTS_SRC"/* ~/ 2>/dev/null
+            # Use / period to include hidden files (cp -a src/. dst)
+            cp -a "$DOTS_SRC/." ~/ 2>/dev/null
             mkdir -p ~/.config/hypr
+            
+            # Ensure permissions are correct (root owns them now, which is fine for live root session)
         else
             echo "ERROR: Dotfiles source not found at $DOTS_SRC"
         fi
