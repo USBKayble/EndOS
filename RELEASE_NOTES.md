@@ -1,16 +1,29 @@
-# EndOS Live-Beta-15
 
-## Release Highlights
+# EndOS Release Notes
 
-- **Build Fixes**: Enabled `multilib` repository and resolved `broadcom-wl` package conflicts.
-- **Build Workflow**: Updated to use recursive local file copy and removed external downloads for reliability.
-- **Installer**: Added `install_to_disk.sh` wrapper to ensure offline files are copied to the target system during disk install.
-- **Dotfiles**: Added missing dependencies (`ydotool`, `ddcutil`, `brightnessctl`) and configured `input`/`i2c` groups and modules.
-- **Core**: Verified and added essential `base`, `linux`, `linux-firmware` packages to ensure ISO bootability.
+<!---
+NOTE: This file is automatically read by the release workflow.
+The first line (Title) is used to generate the ISO filename.
+Do NOT remove the first line.
+-->
 
 ## Installation
-1. Boot the ISO (EndOS).
-2. Wait for auto-login and configuration.
-3. Launch **"Install EndOS"** from the application menu (Super+A).
-4. Run the installer (archinstall) and reboot.
-5. On the new system, login and run `/root/setup_arch.sh` to finalize.
+
+### ⚠️ Important: Split ISO Files
+Due to GitHub file size limits, the ISO may be split into multiple parts (e.g., `.iso.00`, `.iso.01`).
+
+**If you see multiple files, you MUST combine them before using.**
+
+#### Windows
+Open Command Prompt (cmd) in the download folder and run:
+```cmd
+copy /b EndOS-*.iso.* EndOS-Combined.iso
+```
+
+#### Linux / macOS
+Open a terminal in the download folder and run:
+```bash
+cat EndOS-*.iso.* > EndOS-Combined.iso
+```
+
+Use `EndOS-Combined.iso` for flashing/booting.
