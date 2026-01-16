@@ -1,10 +1,11 @@
-# EndOS v2026.01.15-r5
+# EndOS v2026.01.15-r6 (Simple Edition)
 
 ## Release Highlights
 
+- **Pure & Simple**: This release returns to the roots—a lightweight, text-based installer.
+- **Root Fixes**: Includes critical fixes for running the setup script as root.
+- **No Floaties**: Does not include Live Desktop environment (see Beta releases for that).
 - **Fix**: Resolved boot failure by using standard Arch `releng` profile.
-- **Branding**: ISO is now correctly labeled "EndOS".
-- **Infrastructure**: Builds now run on high-performance self-hosted runners.
 
 ## Installation
 1. Boot the ISO (EndOS).
