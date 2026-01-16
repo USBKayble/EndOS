@@ -7,8 +7,10 @@
 set -e
 
 # Check if running as root - Warn but allow for ISO/Chroot usage
+# Check if running as root
 if [ "$EUID" -eq 0 ]; then
-    echo "Running as root. Sudo password prompts will be skipped."
+    echo "Running as root."
+    SUDO=""
 else
     # Sudo Keep-alive (Robust) for non-root users
     echo "Checking for sudo..."
@@ -32,6 +34,7 @@ else
     (while true; do echo "$USER_PASS" | sudo -S -v; sleep 60; done) &
     SUDO_PID=$!
     trap "kill $SUDO_PID" EXIT
+    SUDO="sudo"
 fi
 
 
@@ -138,7 +141,7 @@ install_with_conflict_resolution() {
         
         # Run pacman and capture both stdout and stderr
         set +e
-        output=$(sudo pacman -Syu --noconfirm --needed $packages 2>&1)
+        output=$($SUDO pacman -Syu --noconfirm --needed $packages 2>&1)
         exit_code=$?
         set -e
         
@@ -150,7 +153,7 @@ install_with_conflict_resolution() {
         
         # Only log to file on failure
         echo "----------------------------------------" >> "$LOG_FILE"
-        echo "Failed command: sudo pacman -Syu --noconfirm --needed $packages" >> "$LOG_FILE"
+        echo "Failed command: $SUDO pacman -Syu --noconfirm --needed $packages" >> "$LOG_FILE"
         echo "$output" >> "$LOG_FILE"
         
         echo "$output"
@@ -180,7 +183,7 @@ install_with_conflict_resolution() {
             if [ -n "$candidate" ]; then
                 echo "Attempting to resolve conflict by removing existing package: $candidate..."
                 set +e
-                sudo pacman -Rdd --noconfirm "$candidate"
+                $SUDO pacman -Rdd --noconfirm "$candidate"
                 rm_exit=$?
                 set -e
                 if [ $rm_exit -ne 0 ]; then
@@ -226,13 +229,32 @@ echo "Detected kernel: $KERNEL_RELEASE. Installing $KERNEL_HEADERS..."
 install_with_conflict_resolution "$KERNEL_HEADERS"
 
 # 3. Install Yay (AUR Helper)
+# 3. Install Yay (AUR Helper)
 if ! command -v yay &> /dev/null; then
     echo "Installing Yay..."
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si --noconfirm
-    cd ..
-    rm -rf yay
+    # Special handling for Root: makepkg cannot run as root
+    if [ "$EUID" -eq 0 ]; then
+        echo "Detected root. Creating temporary 'builder' user for AUR..."
+        useradd -m builder
+        echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+        
+        # Clone and build as builder
+        sudo -u builder bash -c '
+        git clone https://aur.archlinux.org/yay.git /tmp/yay
+        cd /tmp/yay
+        makepkg -si --noconfirm
+        '
+        
+        # Cleanup
+        userdel -r builder
+        # Note: We rely on NOPASSWD for builder to run pacman usage within makepkg
+    else
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm
+        cd ..
+        rm -rf yay
+    fi
 else
     echo "Yay is already installed."
 fi

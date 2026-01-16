@@ -1,4 +1,4 @@
-# EndOS v2026.01.15-r4
+# EndOS v2026.01.15-r5
 
 ## Release Highlights
 
