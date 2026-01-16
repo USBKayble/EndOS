@@ -70,6 +70,11 @@ jobs:
         cat iso/packages.x86_64 >> iso-build/packages.x86_64
         sort -u -o iso-build/packages.x86_64 iso-build/packages.x86_64
         
+        # 2.5a RESOLVE CONFLICTS
+        # 'releng' profile includes virtualbox-guest-utils-nox, but we want the full version (virtualbox-guest-utils).
+        # We must remove the -nox version from the list to avoid conflicts.
+        sed -i '/virtualbox-guest-utils-nox/d' iso-build/packages.x86_64
+        
         # 2.6 VERIFICATION
         # Verify dotfiles were copied correctly
         if [ ! -d "iso-build/airootfs/usr/share/endos/dots" ]; then
