@@ -1,10 +1,11 @@
-# EndOS v2026.01.15-r5
+# EndOS Live-Beta-1
 
 ## Release Highlights
 
+- **Live System**: Now boots directly into Hyprland!
+- **Better UI**: New installer TUI with `gum`.
+- **Merged**: Root fixes and UI improvements combined.
 - **Fix**: Resolved boot failure by using standard Arch `releng` profile.
-- **Branding**: ISO is now correctly labeled "EndOS".
-- **Infrastructure**: Builds now run on high-performance self-hosted runners.
 
 ## Installation
 1. Boot the ISO (EndOS).

@@ -2,9 +2,14 @@ name: Build EndOS ISO
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
+    branches:
+      - main
+      - feature/live-iso
     paths:
       - 'RELEASE_NOTES.md'
+      - '.github/workflows/build_iso.yml'
   workflow_dispatch:
 
 jobs:
