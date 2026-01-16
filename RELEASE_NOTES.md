@@ -10,8 +10,10 @@
 - **Improved**: Live environment now correctly sources configuration from the pre-seeded directory.
 - **Offline Support**: `setup_arch.sh` now auto-detects offline mode, skipping mirror updates and using pre-seeded dotfiles.
 - **Drivers**: Added `mesa`, `vulkan`, and `xf86-video` drivers (AMD/Intel/Nouveau) for broad offline hardware support.
+- **UX**: Added "Install EndOS" desktop shortcut to the Live environment application launcher.
+- **VMs**: Added conditional hardware cursor logic to `.zlogin` for better performance on real hardware while preserving VM compatibility.
 
 ## Installation
 1. Boot the ISO (EndOS).
-2. The `zlogin` script will automatically detecting the pre-seeded dotfiles and apply them.
-3. Use `~/setup_arch.sh` (or the auto-installer) to install to disk.
+2. Wait for auto-login and configuration.
+3. Launch **"Install EndOS"** from the application menu (Super+A).
