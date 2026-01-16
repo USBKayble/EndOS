@@ -31,8 +31,8 @@ def parse_pkgbuild(filepath):
         tokens = inner.split()
         
         for token in tokens:
-            # Clean quotes
-            token = token.strip('\'"')
+            # Clean quotes and whitespace
+            token = token.strip().strip("'\"").strip()
             # Ignore empty strings
             if not token:
                 continue
