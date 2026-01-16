@@ -1,9 +1,9 @@
-# EndOS Live-Beta-6
+# EndOS Live-Beta-7
 
 ## Release Highlights
 
-- **Fix**: Fixed critical bug where hidden dotfiles (like `.config`) were not being copied to the user home directory.
-- **Improved**: Dotfiles now injected from `/usr/share/endos/dots` for better stability.
+- **Fix**: Live Session runs as `liveuser` instead of `root`. This fixes Hyprland crashes caused by root execution requiring special flags.
+- **Improved**: `liveuser` has passwordless sudo access for easy installation.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
 - **New**: Plymouth Boot Splash integrated (Silent Boot).
 - **Better UI**: Installer uses `gum` TUI.

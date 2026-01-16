@@ -1,43 +1,45 @@
 # EndOS Live Environment Entrypoint
 
 if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
-    # Set up transient home for Hyprland if needed
-    if [ ! -d ~/.config/hypr ]; then
-        echo "Setting up EndOS Live Environment..."
-        
-        # Source location from CI injection
+    # Create Live User (if not exists)
+    LIVE_USER="liveuser"
+    if ! id "$LIVE_USER" &>/dev/null; then
+        echo "Creating live user: $LIVE_USER..."
+        useradd -m -G wheel -s /bin/zsh "$LIVE_USER"
+        passwd -d "$LIVE_USER" # No password
+        echo "$LIVE_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    fi
+    
+    # Deploy Dotfiles for Live User
+    LIVE_HOME="/home/$LIVE_USER"
+    if [ ! -d "$LIVE_HOME/.config/hypr" ]; then
+        echo "Setting up dotfiles for $LIVE_USER..."
         DOTS_SRC="/usr/share/endos/dots"
         
         if [ -d "$DOTS_SRC" ]; then
-            echo "Deploying dotfiles from $DOTS_SRC..."
-            # Use / period to include hidden files (cp -a src/. dst)
-            cp -a "$DOTS_SRC/." ~/ 2>/dev/null
-            mkdir -p ~/.config/hypr
+            # Copy all files (including hidden)
+            cp -a "$DOTS_SRC/." "$LIVE_HOME/" 2>/dev/null
+            mkdir -p "$LIVE_HOME/.config/hypr"
             
-            # Ensure permissions are correct (root owns them now, which is fine for live root session)
+            # Fix Permissions
+            chown -R "$LIVE_USER:$LIVE_USER" "$LIVE_HOME"
         else
-            echo "ERROR: Dotfiles source not found at $DOTS_SRC"
+             echo "ERROR: Dotfiles not found at $DOTS_SRC"
         fi
     fi
 
-    echo "Starting Hyprland..."
+    echo "Starting Hyprland as $LIVE_USER..."
     
-    # VM Compatibility Fixes (for Live ISO)
+    # VM Compatibility Fixes
     export WLR_NO_HARDWARE_CURSORS=1
     export WLR_RENDERER_ALLOW_SOFTWARE=1
     
-    # Attempt to start Hyprland with logging
+    # Launch as user
     if command -v Hyprland &> /dev/null; then
-        # Check if dotfiles were actually copied
-        if [ ! -f ~/.config/hypr/hyprland.conf ]; then
-             echo "Warning: Hyprland config not found in ~/.config/hypr/"
-             gum style --foreground 196 "Dotfiles missing! Hyprland might crash."
-        fi
-        
-        # Launch
-        exec Hyprland || echo "Hyprland crashed/exited."
+        # Switch to user and run Hyprland
+        # usage of exec su - ... might handle tty ownership differently
+        exec su - "$LIVE_USER" -c "export WLR_NO_HARDWARE_CURSORS=1; export WLR_RENDERER_ALLOW_SOFTWARE=1; Hyprland" || echo "Hyprland exited."
     else
         echo "Hyprland not found. Dropping to shell."
-        echo "Run './setup_arch.sh' to install."
     fi
 fi
