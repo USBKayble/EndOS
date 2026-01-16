@@ -14,6 +14,7 @@ fuzzel
 pipewire
 pipewire-alsa
 pipewire-pulse
+pipewire-jack
 wireplumber
 thunar
 gvfs
@@ -39,6 +40,15 @@ wl-clipboard
 grim
 slurp
 swappy
+# --- Utils for Dotfiles ---
+dart-sass
+fd
+ripgrep
+thunar-volman
+polkit-gnome
+curl
+wget
+networkmanager
 network-manager-applet
 btop
 # --- Fonts & Themes ---

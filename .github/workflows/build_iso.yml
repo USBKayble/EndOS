@@ -100,6 +100,68 @@ jobs:
         HOOKS=(base udev plymouth modconf kms block filesystems fsck)
         EOF
         
+        # 4.1 BAKED-IN CONFIGURATION (Live User & Logs)
+        
+        # A. Create global log directory (777 permissions)
+        mkdir -p iso-build/airootfs/log
+        chmod 777 iso-build/airootfs/log
+        
+        # B. Setup 'setup' command symlink
+        # Link /usr/local/bin/setup -> /root/setup_arch.sh
+        mkdir -p iso-build/airootfs/usr/local/bin
+        ln -sf /root/setup_arch.sh iso-build/airootfs/usr/local/bin/setup
+        chmod +x iso-build/airootfs/root/setup_arch.sh
+        
+        # C. Create 'liveuser' via sysusers.d (Implicit creation on boot)
+        # We assign UID 1000 so we can pre-populate files with that owner.
+        mkdir -p iso-build/airootfs/usr/lib/sysusers.d
+        echo "u liveuser 1000 \"EndOS Live User\" /home/liveuser" > iso-build/airootfs/usr/lib/sysusers.d/liveuser.conf
+        
+        # D. Pre-populate /home/liveuser with dotfiles
+        mkdir -p iso-build/airootfs/home/liveuser
+        
+        # Copy dotfiles (logic similar to what .zlogin used to do)
+        DOTS_SRC="iso/airootfs/usr/share/endos/dots"
+        LIVE_HOME="iso-build/airootfs/home/liveuser"
+        
+        if [ -d "$DOTS_SRC/dots" ]; then
+             DOTS_SUBDIR="$DOTS_SRC/dots"
+        else
+             DOTS_SUBDIR="$DOTS_SRC"
+        fi
+        
+        if [ -d "$DOTS_SUBDIR/.config" ]; then
+             cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/"
+        elif [ -d "$DOTS_SUBDIR/hypr" ]; then
+             mkdir -p "$LIVE_HOME/.config"
+             cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/.config/"
+        else 
+             # Fallback
+             mkdir -p "$LIVE_HOME/.config"
+             cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/.config/"
+        fi
+        
+        # Create README
+        echo "Welcome to EndOS! Run 'setup' to install." > "$LIVE_HOME/README.txt"
+        
+        # Fix Ownership (UID 1000:1000)
+        # We must use numeric IDs because 'liveuser' doesn't exist on the host runner
+        chown -R 1000:1000 "$LIVE_HOME"
+
+        # 4.2 ENABLE SERVICES
+        # We must manually enable systemd services by creating symlinks in the build root
+        SERVICES_DIR="iso-build/airootfs/etc/systemd/system/multi-user.target.wants"
+        mkdir -p "$SERVICES_DIR"
+        
+        # NetworkManager
+        ln -sf /usr/lib/systemd/system/NetworkManager.service "$SERVICES_DIR/NetworkManager.service"
+        
+        # Bluetooth
+        ln -sf /usr/lib/systemd/system/bluetooth.service "$SERVICES_DIR/bluetooth.service"
+        
+        # SSHD (Optional but useful for debugging)
+        ln -sf /usr/lib/systemd/system/sshd.service "$SERVICES_DIR/sshd.service"
+        
         # Patch syslinux (BIOS)
         find iso-build/syslinux -name "*.cfg" -exec sed -i 's/archisobasedir/splash quiet archisobasedir/g' {} +
         

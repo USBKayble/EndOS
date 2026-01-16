@@ -7,7 +7,11 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-Moved ISO building to Github providers.
+- **Baked-in Live User**: The `liveuser` account is now fully configured during the build process, including dotfiles and permissions.
+- **Global Logging**: Boot logs are now captured in `/log/zlogin.log` for easier debugging.
+- **Services Enabled**: `NetworkManager`, `bluetooth`, and `sshd` are now enabled by default for instant connectivity.
+- **Package Fixes**: Resolved VirtualBox conflicts and audio provider ambiguities (`pipewire-jack`).
+- **Setup Command**: Simply type `setup` in the terminal to launch the installer.
 
 ## Installation
 
