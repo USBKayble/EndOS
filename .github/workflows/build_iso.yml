@@ -24,7 +24,7 @@ jobs:
     steps:
     - name: Install Archiso Tools
       run: |
-        pacman -Sy --noconfirm archiso git grub syslinux dosfstools mtools
+        pacman -Sy --noconfirm archiso git grub syslinux dosfstools mtools wget unzip
 
     - name: Checkout Code
       uses: actions/checkout@v4

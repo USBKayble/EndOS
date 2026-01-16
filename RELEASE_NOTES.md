@@ -1,7 +1,8 @@
-# EndOS Live-Beta-10
+# EndOS Live-Beta-11
 
 ## Release Highlights
 
+- **Fix**: Added missing CI dependencies (`wget`, `unzip`) to build environment.
 - **Fix**: Replaced GitHub cloning with direct ZIP download for dotfiles to ensure reliability.
 - **Fix**: Added build-time validation to fail immediately if dotfiles are missing (saves 20m wait time).
 - **Feature**: **Offline Install Support** - `setup_arch.sh` now detects packaged dotfiles on the ISO and installs them without internet.
