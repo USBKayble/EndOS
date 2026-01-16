@@ -7,7 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-- **Huge Overhaul**: We have essentially just translated the End-4 dots installer to build the iso instead of simply building on an existing system.
+Cleaned up the package retrival to remove whitespaces causing errors in the build process.
 
 ## Installation
 
