@@ -1,8 +1,8 @@
-# EndOS Live-Beta-8
+# EndOS Live-Beta-9
 
 ## Release Highlights
 
-- **New**: ISO filename now includes Release Name and Date (e.g. `EndOS-Live-Beta-8-2026.01.15.iso`).
+- **Fix**: Critical Fix - Setup `XDG_RUNTIME_DIR` for `liveuser` to prevent Hyprland crash ("XDG_RUNTIME_DIR is not set").
 - **Feature**: **Offline Install Support** - `setup_arch.sh` now detects packaged dotfiles on the ISO and installs them without internet.
 - **Improved**: `liveuser` session stability.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
