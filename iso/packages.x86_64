@@ -13,6 +13,7 @@ gvfs
 bluez
 bluez-utils
 gum
+plymouth
 # --- Fonts & Themes ---
 ttf-jetbrains-mono-nerd
 noto-fonts

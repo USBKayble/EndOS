@@ -1,11 +1,11 @@
-# EndOS Live-Beta-1
+# EndOS Live-Beta-2
 
 ## Release Highlights
 
-- **Live System**: Now boots directly into Hyprland!
-- **Better UI**: New installer TUI with `gum`.
-- **Merged**: Root fixes and UI improvements combined.
-- **Fix**: Resolved boot failure by using standard Arch `releng` profile.
+- **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
+- **New**: Plymouth Boot Splash integrated (Silent Boot).
+- **Restored**: Desktop packages were missing in Beta-1, now fully restored.
+- **Better UI**: Installer uses `gum` TUI.
 
 ## Installation
 1. Boot the ISO (EndOS).

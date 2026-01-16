@@ -61,6 +61,22 @@ jobs:
         sed -i 's/iso_publisher="Arch Linux <https:\/\/archlinux.org>"/iso_publisher="EndOS <https:\/\/github.com\/USBKayble\/EndOS>"/' iso-build/profiledef.sh
         sed -i 's/iso_application="Arch Linux Live\/Rescue CD"/iso_application="EndOS Live\/Rescue CD"/' iso-build/profiledef.sh
 
+        # 4. Plymouth (Bootscreen) Configuration
+        # Create a custom mkinitcpio.conf for the ISO (adding plymouth hook)
+        # We start with standard archiso hooks and insert plymouth after udev
+        cat > iso-build/airootfs/etc/mkinitcpio.conf <<EOF
+        MODULES=()
+        BINARIES=()
+        FILES=()
+        HOOKS=(base udev plymouth modconf block systems fsck)
+        EOF
+        
+        # Patch syslinux (BIOS)
+        find iso-build/syslinux -name "*.cfg" -exec sed -i 's/archisobasedir/splash quiet archisobasedir/g' {} +
+        
+        # Patch GRUB (UEFI)
+        find iso-build/grub -name "grub.cfg" -exec sed -i 's/loglevel=3/loglevel=3 splash quiet/g' {} +
+
     - name: Build Arch ISO
       run: |
         mkdir -p output
