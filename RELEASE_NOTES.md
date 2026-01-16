@@ -1,9 +1,10 @@
-# EndOS Live-Beta-7
+# EndOS Live-Beta-8
 
 ## Release Highlights
 
-- **Fix**: Live Session runs as `liveuser` instead of `root`. This fixes Hyprland crashes caused by root execution requiring special flags.
-- **Improved**: `liveuser` has passwordless sudo access for easy installation.
+- **New**: ISO filename now includes Release Name and Date (e.g. `EndOS-Live-Beta-8-2026.01.15.iso`).
+- **Feature**: **Offline Install Support** - `setup_arch.sh` now detects packaged dotfiles on the ISO and installs them without internet.
+- **Improved**: `liveuser` session stability.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
 - **New**: Plymouth Boot Splash integrated (Silent Boot).
 - **Better UI**: Installer uses `gum` TUI.

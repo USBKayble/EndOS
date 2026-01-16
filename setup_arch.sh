@@ -432,8 +432,19 @@ gum style "Installing dotfiles for $TARGET_USER ($TARGET_HOME)..."
 # Remove existing dir if it exists to avoid conflicts
 rm -rf $TARGET_HOME/dots-hyprland-temp
 
-# Clone as the target user to ensure permissions
-gum spin --title "Cloning dotfiles..." -- sudo -u $TARGET_USER git clone --depth 1 https://github.com/end-4/dots-hyprland.git $TARGET_HOME/dots-hyprland-temp
+# Check for local "Offline" Source (packaged on ISO)
+OFFLINE_DOTS="/usr/share/endos/dots"
+
+if [ -d "$OFFLINE_DOTS" ]; then
+    gum style --foreground 76 "Offline source detected at $OFFLINE_DOTS. Installing from ISO..."
+    # Local Copy
+    cp -a "$OFFLINE_DOTS" "$TARGET_HOME/dots-hyprland-temp"
+    # Ensure ownership for the installer to run correctly
+    chown -R $TARGET_USER:$TARGET_USER "$TARGET_HOME/dots-hyprland-temp"
+else
+    # Online Clone
+    gum spin --title "Cloning dotfiles from GitHub..." -- sudo -u $TARGET_USER git clone --depth 1 https://github.com/end-4/dots-hyprland.git $TARGET_HOME/dots-hyprland-temp
+fi
 
 echo "Running dotfiles installer..."
 # Run installer as target user

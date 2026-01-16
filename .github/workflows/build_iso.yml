@@ -91,12 +91,30 @@ jobs:
         cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
+    - name: Rename ISO
+      id: rename_iso
+      run: |
+        ISO_FILE=$(find output -name "*.iso")
+        
+        # Extract title from RELEASE_NOTES.md (remove '# ', replace space with '-')
+        # Sanitize to alphanumeric, dashes, dots
+        RELEASE_TITLE=$(head -n 1 RELEASE_NOTES.md | sed 's/^# //g' | tr -s ' ' '-')
+        
+        # Date string
+        DATE_TAG=$(date +'%Y.%m.%d')
+        
+        NEW_NAME="${RELEASE_TITLE}-${DATE_TAG}.iso"
+        
+        mv "$ISO_FILE" "output/$NEW_NAME"
+        echo "Renamed ISO to: $NEW_NAME"
+        echo "iso_path=output/$NEW_NAME" >> $GITHUB_OUTPUT
+
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/live-iso'
       with:
         files: |
-          output/*.iso
+          ${{ steps.rename_iso.outputs.iso_path }}
           setup_arch.sh
         name: EndOS Release ${{ github.run_number }}
         tag_name: v${{ github.run_number }}
