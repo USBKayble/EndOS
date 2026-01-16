@@ -7,11 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-- **Baked-in Live User**: The `liveuser` account is now fully configured during the build process, including dotfiles and permissions.
-- **Global Logging**: Boot logs are now captured in `/log/zlogin.log` for easier debugging.
-- **Services Enabled**: `NetworkManager`, `bluetooth`, and `sshd` are now enabled by default for instant connectivity.
-- **Package Fixes**: Resolved VirtualBox conflicts and audio provider ambiguities (`pipewire-jack`).
-- **Setup Command**: Simply type `setup` in the terminal to launch the installer.
+- **Huge Overhaul**: We have essentially just translated the End-4 dots installer to build the iso instead of simply building on an existing system.
 
 ## Installation
 

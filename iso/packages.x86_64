@@ -7,66 +7,155 @@ intel-ucode
 mkinitcpio
 mkinitcpio-archiso
 archinstall
-# --- EndOS Desktop ---
-hyprland
-kitty
-fuzzel
-pipewire
-pipewire-alsa
-pipewire-pulse
-pipewire-jack
+# --- EndOS Desktop (From Dotfiles) ---
+# Audio
+cava
+pavucontrol-qt
 wireplumber
-thunar
-gvfs
-bluez
-bluez-utils
-gum
-plymouth
-ydotool
-ddcutil
+pipewire-pulse
+libdbusmenu-gtk3
+playerctl
+
+# Backlight
+geoclue
 brightnessctl
-# --- Hyprland Extras (Required for end-4 dots) ---
-chaotic-keyring
-chaotic-mirrorlist
-aylurs-gtk-shell
-hypridle
-hyprlock
-swww
-python-pywal
-imagemagick
-# --- Utilities ---
+ddcutil
+
+# Basic
+bc
+coreutils
 cliphist
-wl-clipboard
-grim
-slurp
-swappy
-# --- Utils for Dotfiles ---
-dart-sass
-fd
-ripgrep
-thunar-volman
-polkit-gnome
+cmake
 curl
 wget
-networkmanager
-network-manager-applet
-btop
-# --- Fonts & Themes ---
+ripgrep
+jq
+xdg-user-dirs
+rsync
+go-yq
+
+# Fonts & Themes
+adw-gtk-theme-git
+breeze
+# breeze-plus  # Likely AUR/Custom, ensure available or skip
+darkly-bin
+eza
+fish
+fontconfig
+kitty
+matugen-bin
+otf-space-grotesk
+starship
 ttf-jetbrains-mono-nerd
-noto-fonts
-noto-fonts-emoji
-papirus-icon-theme
+ttf-material-symbols-variable-git
+ttf-readex-pro
+ttf-rubik-vf
+ttf-twemoji
+
+# Hyprland
+hyprland
+hyprsunset
+wl-clipboard
+
+# KDE / Qt Integration
+bluedevil
+gnome-keyring
+networkmanager
+plasma-nm
+polkit-kde-agent
+dolphin
+systemsettings
+
+# MicroTeX Deps
+tinyxml2
+gtkmm3
+gtksourceviewmm
+cairomm
+
+# Portals
+xdg-desktop-portal
+xdg-desktop-portal-kde
+xdg-desktop-portal-gtk
+xdg-desktop-portal-hyprland
+
+# Python Support
+clang
+uv
+gtk4
+libadwaita
+libsoup3
+libportal-gtk4
+gobject-introspection
+
+# Quickshell Deps
+qt6-declarative
+qt6-base
+jemalloc
+qt6-svg
+libpipewire
+libxcb
+wayland
+libdrm
+mesa
+google-breakpad
+qt6-5compat 
+qt6-avif-image-plugin
+qt6-imageformats
+qt6-multimedia
+qt6-positioning
+qt6-quicktimeline
+qt6-sensors
+qt6-svg
+qt6-tools
+qt6-translations
+qt6-virtualkeyboard
+qt6-wayland
+kirigami
+kdialog
+syntax-highlighting
+
+# Screencapture
+hyprshot
+slurp
+swappy
+tesseract
+tesseract-data-eng
+wf-recorder
+
+# Toolkit
+upower
+wtype
+ydotool
+
+# Widgets
+fuzzel
+glib2
+imagemagick
+hypridle
+hyprlock
+hyprpicker
+songrec
+translate-shell
+wlogout
+libqalculate
+
+# --- Shell ---
+zsh
+fish
+starship
+
 # --- Tools ---
 git
 neovim
 nano
 htop
 fastfetch
-fastfetch
 firefox
+chaotic-keyring
+chaotic-mirrorlist
+
 # --- Offline Hardware Support ---
 mesa
-lib32-mesa
 lib32-mesa
 # --- VM Support (Critical for VirtualBox/QEMU) ---
 virtualbox-guest-utils
@@ -81,7 +170,6 @@ xf86-video-nouveau
 vulkan-radeon
 lib32-vulkan-radeon
 vulkan-intel
-lib32-vulkan-intel
 lib32-vulkan-intel
 sof-firmware
 linux-firmware-marvell
