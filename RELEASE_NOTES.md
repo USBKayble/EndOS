@@ -7,7 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-Added the pciutils package for gpu detection.
+Moved ISO building to Github providers.
 
 ## Installation
 
