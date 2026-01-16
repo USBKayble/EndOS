@@ -72,18 +72,27 @@ fi
 install_gum # Ensure gum is installed even if root
 
 echo "Enabling multilib repository..."
-if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
-    $SUDO bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
-    $SUDO pacman -Sy
-else
-    echo "Multilib seems to be enabled already."
+if [ "$ONLINE" = "true" ]; then
+    if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+        $SUDO bash -c 'echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf'
+        $SUDO pacman -Sy
+    else
+        echo "Multilib seems to be enabled already."
+    fi
 fi
 
 # 2. System Update & Base Packages
-echo "Updating mirrors with Reflector..."
-$SUDO pacman -Syu --noconfirm --needed reflector
-$SUDO cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-$SUDO reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+if [ "$ONLINE" = "true" ]; then
+    echo "Updating mirrors with Reflector..."
+    $SUDO pacman -Syu --noconfirm --needed reflector
+    $SUDO cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+    $SUDO reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    
+    echo "Updating system..."
+    $SUDO pacman -Sy
+else
+    echo "Offline mode: Skipping mirror update and system sync."
+fi
 
 echo "Updating system and installing base-devel, git, wget, curl, NetworkManager, sddm, openssh, pipewire types..."
 
@@ -145,6 +154,27 @@ report_issues() {
 }
 trap report_issues EXIT
 
+# Check internet connection
+ONLINE=true
+if ! ping -c 1 8.8.8.8 &> /dev/null; then
+    ONLINE=false
+    gum style --foreground 190 "No internet connection detected. Switching to OFFLINE mode."
+else
+    gum style --foreground 76 "Internet connection detected."
+fi
+
+# Auto-detect Offline Dotfiles Source
+if [ -z "$OFFLINE_DOTS" ]; then
+    if [ -d "/usr/share/endos/dots" ]; then
+        OFFLINE_DOTS="/usr/share/endos/dots"
+        export OFFLINE_DOTS
+        gum style --foreground 76 "Detected offline dotfiles at $OFFLINE_DOTS"
+    elif [ -d "./dots" ]; then
+        OFFLINE_DOTS="$(pwd)/dots"
+        export OFFLINE_DOTS
+    fi
+fi
+
 # Function to handle package installation with dynamic conflict resolution and smart checks
 install_with_conflict_resolution() {
     local requested_packages=("$@")
@@ -153,19 +183,28 @@ install_with_conflict_resolution() {
     # Smart Check: Filter out already installed packages
     for pkg in "${requested_packages[@]}"; do
         if pacman -Qq "$pkg" &> /dev/null; then
-            echo "Skipping $pkg (already installed)"
+            # Silent skip is better for logs
+            :
         else
             packages_to_install+=("$pkg")
         fi
     done
     
     if [ ${#packages_to_install[@]} -eq 0 ]; then
-        echo "All packages are already installed. Skipping."
+        echo "All packages from list are already installed."
         return 0
+    fi
+    
+    # OFFLINE MODE CHECK
+    if [ "$ONLINE" = "false" ]; then
+         gum style --foreground 190 "Offline Mode: Skipping installation of missing packages: ${packages_to_install[*]}"
+         gum style --foreground 240 "(Assuming they are present in the ISO but not detected, or user accepts they are missing)"
+         return 0
     fi
 
     local packages="${packages_to_install[*]}"
     local max_retries=5
+
     local retry_count=0
 
     while [ $retry_count -lt $max_retries ]; do

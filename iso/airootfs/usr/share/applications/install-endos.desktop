@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Install EndOS
+Comment=Install EndOS to disk
+Exec=kitty -e sudo /root/setup_arch.sh
+Icon=system-software-install
+Type=Application
+Categories=System;
+Terminal=false

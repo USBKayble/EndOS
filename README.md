@@ -18,8 +18,21 @@
     *   **Audio**: Full Pipewire/Wireplumber stack.
     *   **Bluetooth**: Bluez stack enabled out of the box.
     *   **SSH**: OpenSSH installed and enabled for remote access.
+*   **Offline Capable**:
+    *   **Pre-seeded Dotfiles**: The Live ISO includes the dotfiles, so you don't need internet to install.
+    *   **Drivers**: Includes Mesa, Vulkan, and proprietary firmware for broad hardware support offline.
 
 ## How to Use
+
+## How to Use
+
+### Method 1: Live ISO (Recommended)
+1.  Boot the **EndOS ISO**.
+2.  Wait for the auto-login and dotfiles setup.
+3.  Open the application launcher (Super+A) and search for **"Install EndOS"**.
+4.  Follow the on-screen instructions.
+
+### Method 2: Manual Script (Existing Arch Install)
 
 1.  **Install Arch Linux** (using `archinstall` or manually).
 2.  **Clone this repository**:

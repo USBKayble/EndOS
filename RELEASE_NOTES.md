@@ -8,6 +8,8 @@
 - **Fix**: Resolves missing dotfiles issue in Live ISO by pre-seeding `dots-hyprland` into `/usr/share/endos/dots`.
 - **Fix**: Ensures `setup_arch.sh` is present in `/root` for easier access and offline installation capability.
 - **Improved**: Live environment now correctly sources configuration from the pre-seeded directory.
+- **Offline Support**: `setup_arch.sh` now auto-detects offline mode, skipping mirror updates and using pre-seeded dotfiles.
+- **Drivers**: Added `mesa`, `vulkan`, and `xf86-video` drivers (AMD/Intel/Nouveau) for broad offline hardware support.
 
 ## Installation
 1. Boot the ISO (EndOS).

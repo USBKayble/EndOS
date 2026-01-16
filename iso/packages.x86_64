@@ -40,4 +40,19 @@ neovim
 nano
 htop
 fastfetch
+fastfetch
 firefox
+# --- Offline Hardware Support ---
+mesa
+lib32-mesa
+xf86-video-amdgpu
+xf86-video-ati
+xf86-video-intel
+xf86-video-nouveau
+vulkan-radeon
+lib32-vulkan-radeon
+vulkan-intel
+lib32-vulkan-intel
+broadcom-wl-dkms
+sof-firmware
+linux-firmware-marvell

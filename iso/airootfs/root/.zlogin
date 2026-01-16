@@ -59,9 +59,17 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
 
     echo "Starting Hyprland as $LIVE_USER..."
     
-    # VM Compatibility Fixes
-    export WLR_NO_HARDWARE_CURSORS=1
-    export WLR_RENDERER_ALLOW_SOFTWARE=1
+    # VM Compatibility Fixes (Conditional)
+    if lspci | grep -Ei "vmware|virtualbox|qemu|kvm|hyper-v" &> /dev/null; then
+        echo "VM Environment Detected. Enabling software cursors..."
+        export WLR_NO_HARDWARE_CURSORS=1
+        export WLR_RENDERER_ALLOW_SOFTWARE=1
+    else
+        # Optional: Force software cursors for Nvidia if needed, but modern Hyprland is better.
+        # For now, let's keep it clean for real hardware.
+        # If user has issues, they can set it manually.
+        :
+    fi
     
     # Launch as user
     if command -v Hyprland &> /dev/null; then
@@ -76,7 +84,7 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
             chmod 700 "$USER_RUNTIME_DIR"
         fi
         
-        exec su - "$LIVE_USER" -c "export XDG_RUNTIME_DIR=$USER_RUNTIME_DIR; export WLR_NO_HARDWARE_CURSORS=1; export WLR_RENDERER_ALLOW_SOFTWARE=1; Hyprland" || echo "Hyprland exited."
+        exec su - "$LIVE_USER" -c "export XDG_RUNTIME_DIR=$USER_RUNTIME_DIR; [ -n \"$WLR_NO_HARDWARE_CURSORS\" ] && export WLR_NO_HARDWARE_CURSORS=1; [ -n \"$WLR_RENDERER_ALLOW_SOFTWARE\" ] && export WLR_RENDERER_ALLOW_SOFTWARE=1; Hyprland" || echo "Hyprland exited."
     else
         echo "Hyprland not found. Dropping to shell."
     fi
