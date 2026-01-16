@@ -115,9 +115,9 @@ jobs:
         
         # We need to ensure correct pathing. 'repo' is in workspace root.
         # mkarchiso runs relative to workspace.
-        REPO_PATH=\$(pwd)/repo
+        REPO_PATH="$(pwd)/repo"
         
-        sed -i '1i[endos-local]\nSigLevel = Optional TrustAll\nServer = file://'"\$REPO_PATH" iso-build/pacman.conf
+        sed -i '1i[endos-local]\nSigLevel = Optional TrustAll\nServer = file://'"$REPO_PATH" iso-build/pacman.conf
         
         # 2.1 PATCH mkarchiso pacman.conf
         # The build tool uses this specific config file to resolve packages.
