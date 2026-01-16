@@ -56,6 +56,9 @@ jobs:
         
         # 2.1 PATCH mkarchiso pacman.conf
         # The build tool uses this specific config file to resolve packages.
+        # We must enable MULTILIB for 32-bit driver support (lib32-mesa, etc.)
+        sed -i "/\[multilib\]/,/Include/"'s/^#//' iso-build/pacman.conf
+        
         # We must add Chaotic AUR here so it can find AGS/swww.
         echo "" >> iso-build/pacman.conf
         echo "[chaotic-aur]" >> iso-build/pacman.conf
