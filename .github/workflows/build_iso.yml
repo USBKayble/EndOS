@@ -121,7 +121,8 @@ jobs:
         
         # Extract title from RELEASE_NOTES.md (remove '# ', replace space with '-')
         # Sanitize to alphanumeric, dashes, dots
-        RELEASE_TITLE=$(head -n 1 RELEASE_NOTES.md | sed 's/^# //g' | tr -s ' ' '-')
+        # Extract title from RELEASE_NOTES.md (find first line starting with '# ')
+        RELEASE_TITLE=$(grep -m 1 "^# " RELEASE_NOTES.md | sed 's/^# //g' | tr -s ' ' '-')
         
         # Date string
         DATE_TAG=$(date +'%Y.%m.%d')
@@ -145,7 +146,8 @@ jobs:
             cd output
             
             # Split into chunks with numeric suffixes (.00, .01)
-            split -b 1900M --numeric-suffixes=00 "$NEW_NAME" "$NEW_NAME."
+            # Use -- to prevent filename being interpreted as flags if it starts with dash
+            split -b 1900M --numeric-suffixes=00 -- "$NEW_NAME" "$NEW_NAME."
             
             # Remove the original large file
             rm "$NEW_NAME"
