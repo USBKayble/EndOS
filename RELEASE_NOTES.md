@@ -1,11 +1,13 @@
-EndOS-Live-Beta
-# EndOS Release Notes
+# EndOS-Live-Beta
 
 <!---
 NOTE: This file is automatically read by the release workflow.
 The first line (Title) is used to generate the ISO filename.
 Do NOT remove the first line.
 -->
+## Changes
+
+(Hopefully) Fixed the issue where the ISO would crashloop on VirtualBox when trying to start Hyprland.
 
 ## Installation
 
@@ -15,9 +17,16 @@ Due to GitHub file size limits, the ISO may be split into multiple parts (e.g., 
 **If you see multiple files, you MUST combine them before using.**
 
 #### Windows
-Open Command Prompt (cmd) in the download folder and run:
+**Option 1: Command Prompt (cmd.exe)**
+Open Command Prompt in the download folder and run:
 ```cmd
 copy /b EndOS-*.iso.* EndOS-Combined.iso
+```
+
+**Option 2: PowerShell**
+If you are using PowerShell, run:
+```powershell
+cmd /c copy /b "EndOS-*.iso.*" "EndOS-Combined.iso"
 ```
 
 #### Linux / macOS

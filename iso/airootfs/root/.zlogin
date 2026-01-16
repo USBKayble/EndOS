@@ -52,6 +52,10 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
             
             # Fix Permissions
             chown -R "$LIVE_USER:$LIVE_USER" "$LIVE_HOME"
+            
+            # Create a visible file so 'ls' isn't empty
+            echo "Welcome to EndOS! Run 'setup' to install." > "$LIVE_HOME/README.txt"
+            chown "$LIVE_USER:$LIVE_USER" "$LIVE_HOME/README.txt"
         else
              echo "ERROR: Dotfiles not found at $DOTS_SRC"
         fi
