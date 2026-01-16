@@ -1,3 +1,12 @@
+# --- Core System (Essential for Boot) ---
+base
+linux
+linux-firmware
+amd-ucode
+intel-ucode
+mkinitcpio
+mkinitcpio-archiso
+archinstall
 # --- EndOS Desktop ---
 hyprland
 kitty

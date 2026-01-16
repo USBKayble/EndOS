@@ -18,4 +18,5 @@ file_permissions=(
   ["/root"]="0:0:750"
   ["/root/.zlogin"]="0:0:755"
   ["/root/setup_arch.sh"]="0:0:755"
+  ["/root/install_to_disk.sh"]="0:0:755"
 )

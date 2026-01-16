@@ -50,14 +50,9 @@ jobs:
         cp -r /usr/share/archiso/configs/releng iso-build
         
         # 2. Inject ONLY our custom files into the standard profile
-        # Auto-start wrapper
-        cp iso/airootfs/root/.zlogin iso-build/airootfs/root/.zlogin
-        
-        # Archinstall defaults
-        cp iso/airootfs/root/config.json iso-build/airootfs/root/config.json
-        
-        # Setup script (still useful for installing to disk)
-        cp setup_arch.sh iso-build/airootfs/root/setup_arch.sh
+        # 2. Inject ALL custom files from our repo into the build profile
+        # This includes .zlogin, config.json, setup_arch.sh, dotfiles, and desktop shortcuts
+        cp -r iso/airootfs/* iso-build/airootfs/
         
         # 2.1 PATCH mkarchiso pacman.conf
         # The build tool uses this specific config file to resolve packages.
@@ -67,29 +62,16 @@ jobs:
         echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> iso-build/pacman.conf
         
         # 2.5 MERGE Package Lists
-        # We append our custom packages to the releng list instead of replacing it.
-        # This ensures we keep all bootloader/kernel packages required for the ISO to work.
+        # We append our custom packages to the releng list.
+        # Use sort -u to remove duplicates (base, linux, etc. might be in both)
         cat iso/packages.x86_64 >> iso-build/packages.x86_64
+        sort -u -o iso-build/packages.x86_64 iso-build/packages.x86_64
         
-        # 2.6 LIVE ENVIRONMENT: Dotfiles
-        # Use a reliable system path instead of /etc/skel
-        # STRATEGY CHANGE: Use wget/unzip instead of git clone for better reliability in containers
-        mkdir -p iso-build/airootfs/usr/share/endos
-        
-        echo "Downloading dotfiles..."
-        wget -O dots.zip https://github.com/end-4/dots-hyprland/archive/refs/heads/main.zip
-        unzip -q dots.zip
-        mv dots-hyprland-main iso-build/airootfs/usr/share/endos/dots
-        rm dots.zip
-        
-        # CRITICAL: Verify content exists. Fail build if empty.
-        if [ -z "$(ls -A iso-build/airootfs/usr/share/endos/dots/dots)" ]; then
-            echo "ERROR: 'dots' subdirectory is empty! Aborting build."
-            ls -R iso-build/airootfs/usr/share/endos/dots
+        # 2.6 VERIFICATION
+        # Verify dotfiles were copied correctly
+        if [ ! -d "iso-build/airootfs/usr/share/endos/dots" ]; then
+            echo "ERROR: Dotfiles directory missing in build root!"
             exit 1
-        else
-            echo "Dotfiles contents verified (Subdirectory):"
-            ls -F iso-build/airootfs/usr/share/endos/dots/dots
         fi
         
         # 3. Branding: Rename ISO to EndOS
