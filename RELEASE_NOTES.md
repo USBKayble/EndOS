@@ -7,7 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-(Hopefully) Fixed the issue where the ISO would crashloop on VirtualBox when trying to start Hyprland.
+Added the pciutils package for gpu detection.
 
 ## Installation
 

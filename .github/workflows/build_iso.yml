@@ -92,7 +92,7 @@ jobs:
         MODULES=()
         BINARIES=()
         FILES=()
-        HOOKS=(base udev plymouth modconf block systems fsck)
+        HOOKS=(base udev plymouth modconf kms block filesystems fsck)
         EOF
         
         # Patch syslinux (BIOS)
