@@ -50,8 +50,9 @@ jobs:
         cat iso/packages.x86_64 >> iso-build/packages.x86_64
         
         # 2.6 LIVE ENVIRONMENT: Dotfiles
-        # Clone end-4 dotfiles directly into /etc/skel so new users (and root) get them.
-        git clone --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/etc/skel/dots-hyprland
+        # Use a reliable system path instead of /etc/skel
+        mkdir -p iso-build/airootfs/usr/share/endos/dots
+        git clone --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/usr/share/endos/dots
         
         # 3. Branding: Rename ISO to EndOS
         # We modify the official profiledef.sh in-place to avoid breaking boot modes.

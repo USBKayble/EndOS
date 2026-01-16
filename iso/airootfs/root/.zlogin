@@ -4,10 +4,16 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
     # Set up transient home for Hyprland if needed
     if [ ! -d ~/.config/hypr ]; then
         echo "Setting up EndOS Live Environment..."
-        # Copy dotfiles if they exist in skel (deployed by CI)
-        if [ -d /etc/skel/dots-hyprland ]; then
-            cp -r /etc/skel/dots-hyprland/* ~/ 2>/dev/null
+        
+        # Source location from CI injection
+        DOTS_SRC="/usr/share/endos/dots"
+        
+        if [ -d "$DOTS_SRC" ]; then
+            echo "Deploying dotfiles from $DOTS_SRC..."
+            cp -r "$DOTS_SRC"/* ~/ 2>/dev/null
             mkdir -p ~/.config/hypr
+        else
+            echo "ERROR: Dotfiles source not found at $DOTS_SRC"
         fi
     fi
 

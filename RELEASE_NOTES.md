@@ -1,8 +1,8 @@
-# EndOS Live-Beta-4
+# EndOS Live-Beta-5
 
 ## Release Highlights
 
-- **Fix**: Resolved CI build failure caused by duplicate command.
+- **Fix**: Changed dotfiles injection path to `/usr/share/endos/dots` to avoid `/etc/skel` permissions/visibility issues.
 - **Fix**: Resolved Hyprland crash on startup (VM Graphics/Cursor fix).
 - **New**: Plymouth Boot Splash integrated (Silent Boot).
 - **Better UI**: Installer uses `gum` TUI.
