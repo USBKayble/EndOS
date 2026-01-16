@@ -12,6 +12,8 @@
 - **Drivers**: Added `mesa`, `vulkan`, `xf86-video`, and **Nvidia DKMS** drivers for comprehensive offline hardware support.
 - **UX**: Added "Install EndOS" desktop shortcut which launches the new offline-capable disk installer wrapper.
 - **VMs**: Added conditional hardware cursor logic to `.zlogin` for better performance on real hardware while preserving VM compatibility.
+- **Multilib**: Added multilib support to the ISO for 32-bit driver support (lib32-mesa, etc.)
+- **Packages**: Removed a rundundant network package.
 
 ## Installation
 1. Boot the ISO (EndOS).
