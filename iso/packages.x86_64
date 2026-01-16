@@ -62,7 +62,7 @@ vulkan-radeon
 lib32-vulkan-radeon
 vulkan-intel
 lib32-vulkan-intel
-broadcom-wl-dkms
+lib32-vulkan-intel
 sof-firmware
 linux-firmware-marvell
 # --- Nvidia Offline Support ---
