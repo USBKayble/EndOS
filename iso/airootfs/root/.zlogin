@@ -17,8 +17,17 @@ if [[ -z $DISPLAY ]] && [[ $(tty) == /dev/tty1 ]]; then
         DOTS_SRC="/usr/share/endos/dots"
         
         if [ -d "$DOTS_SRC" ]; then
-            # Copy all files (including hidden)
-            cp -a "$DOTS_SRC/." "$LIVE_HOME/" 2>/dev/null
+            # The repository has a 'dots' subdirectory containing the actual config
+            DOTS_SUBDIR="$DOTS_SRC/dots"
+            
+            if [ -d "$DOTS_SUBDIR" ]; then
+                echo "Deploying dotfiles from $DOTS_SUBDIR..."
+                cp -a "$DOTS_SUBDIR/." "$LIVE_HOME/" 2>/dev/null
+            else
+                echo "WARNING: $DOTS_SUBDIR not found. Falling back to root copy..."
+                cp -a "$DOTS_SRC/." "$LIVE_HOME/" 2>/dev/null
+            fi
+            
             mkdir -p "$LIVE_HOME/.config/hypr"
             
             # Fix Permissions

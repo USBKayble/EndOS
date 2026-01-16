@@ -61,12 +61,13 @@ jobs:
         rm dots.zip
         
         # CRITICAL: Verify content exists. Fail build if empty.
-        if [ -z "$(ls -A iso-build/airootfs/usr/share/endos/dots)" ]; then
-            echo "ERROR: Dotfiles directory is empty! Aborting build."
+        if [ -z "$(ls -A iso-build/airootfs/usr/share/endos/dots/dots)" ]; then
+            echo "ERROR: 'dots' subdirectory is empty! Aborting build."
+            ls -R iso-build/airootfs/usr/share/endos/dots
             exit 1
         else
-            echo "Dotfiles contents verified:"
-            ls -F iso-build/airootfs/usr/share/endos/dots
+            echo "Dotfiles contents verified (Subdirectory):"
+            ls -F iso-build/airootfs/usr/share/endos/dots/dots
         fi
         
         # 3. Branding: Rename ISO to EndOS
