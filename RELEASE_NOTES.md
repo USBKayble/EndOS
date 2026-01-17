@@ -7,7 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-Cleaned up the system and improved the package retrieval process.
+Fixed package retrieval process for the 19th time now.
 
 ## Installation
 

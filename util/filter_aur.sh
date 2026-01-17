@@ -15,6 +15,10 @@ fi
 while read -r pkg; do
     # Skip empty lines and comments
     [[ -z "$pkg" || "$pkg" =~ ^# ]] && continue
+
+    # Hardcoded safeguards for known multilib/repo packages that might trigger false positives
+    if [[ "$pkg" == "steam" ]]; then continue; fi
+    if [[ "$pkg" == "lib32-nvidia-utils" ]]; then continue; fi
     
     # Check if package exists in sync db
     if ! pacman -Si "$pkg" &> /dev/null; then
