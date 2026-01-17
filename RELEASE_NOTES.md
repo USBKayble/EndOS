@@ -6,9 +6,11 @@ The first line (Title) is used to generate the ISO filename.
 Do NOT remove the first line.
 -->
 ## Changes
-
-Fixed package retrieval process for the 20th time now.
-Migrated external scripts to inline for cleaner repo.
+- **Refactored Build Process**: Migrated from monolithic bash scripts to modular GitHub Composite Actions for better debugging and code organization.
+- **Network Fix**: Resolved conflict between `systemd-networkd` and `NetworkManager` to ensure networking works out of the box.
+- **Graphical Environment**: Fixed `sddm`/`hyprland` startup issue by correctly configuring `.zlogin` for the live user.
+- **Dotfiles**: Fixed dotfiles integration by using the local `dots-hyprland-main` source and ensuring correct paths in `/root` and `/etc/skel`.
+- **Debugging**: Added detailed build logs to verify file presence and permissions.
 
 ## Installation
 
