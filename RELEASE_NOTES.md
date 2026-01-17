@@ -12,6 +12,7 @@ Do NOT remove the first line.
 - **Python Support**: Restored `quickshell` Python dependencies via `uv`.
 - **Bootloader Config**: Updated to use `systemd-boot` for UEFI and `syslinux` for BIOS (standard Arch ISO configuration).
 - **Cleanup**: Removed legacy `setup_arch.sh`.
+- **Updated Boot Config**: for real this time.
 
 
 ## Installation

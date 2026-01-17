@@ -154,3 +154,5 @@ xf86-video-qxl
 ydotool
 zen-browser-bin
 zsh
+syslinux
+efibootmgr
