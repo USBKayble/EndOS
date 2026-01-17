@@ -84,14 +84,53 @@ jobs:
 
         # 2.06a IDENTIFY PACKAGES
         # We have two sources of packages:
-        # 1. 'Dots' dependencies (from collect_packages.sh)
+        # 1. 'Dots' dependencies (extracted from PKGBUILDs)
         # 2. 'Manual' list (iso/packages.x86_64) that contains user apps + drivers
         
         echo "Collecting all requested packages..."
         mkdir -p /tmp/pkg-processing
         
-        # Get Dots packages
-        bash util/collect_packages.sh iso-build/airootfs/usr/share/endos/dots > /tmp/pkg-processing/dots.txt
+        # --- INLINED collect_packages.sh START ---
+        # Extracts dependencies from dots-hyprland PKGBUILDs
+        (
+            DOTS_ROOT="iso-build/airootfs/usr/share/endos/dots"
+            METAPKGS=(
+                "illogical-impulse-audio"
+                "illogical-impulse-backlight"
+                "illogical-impulse-basic"
+                "illogical-impulse-fonts-themes"
+                "illogical-impulse-kde"
+                "illogical-impulse-portal"
+                "illogical-impulse-python"
+                "illogical-impulse-screencapture"
+                "illogical-impulse-toolkit"
+                "illogical-impulse-widgets"
+                "illogical-impulse-hyprland"
+                "illogical-impulse-microtex-git"
+                "illogical-impulse-quickshell-git"
+                "illogical-impulse-bibata-modern-classic-bin"
+            )
+
+            extract_deps() {
+                local pkg_dir="$1"
+                local full_path="$DOTS_ROOT/sdata/dist-arch/$pkg_dir"
+                
+                if [ -f "$full_path/PKGBUILD" ]; then
+                    (
+                        depends=(); optdepends=(); makedepends=()
+                        source "$full_path/PKGBUILD"
+                        for dep in "${depends[@]}"; do
+                            echo "$dep"
+                        done
+                    )
+                fi
+            }
+
+            for pkg in "${METAPKGS[@]}"; do
+                extract_deps "$pkg"
+            done
+        ) | sort -u | grep -vE "^$" > /tmp/pkg-processing/dots.txt
+        # --- INLINED collect_packages.sh END ---
         
         # Get Manual packages (strip comments)
         sed '/^#/d; /^$/d' iso/packages.x86_64 > /tmp/pkg-processing/manual.txt
@@ -101,7 +140,30 @@ jobs:
         
         # Filter: Separate into AUR (to build) and Repo (to install directly)
         echo "Separating AUR vs Repo packages..."
-        cat /tmp/pkg-processing/all_requested.txt | bash util/filter_aur.sh > aur_deps.txt
+        
+        # --- INLINED filter_aur.sh START ---
+        # Configures pacman and filters non-repo packages
+        
+        # Ensure Multilib is synced on the RUNNER before checking
+        # (The runner's pacman.conf was patched in previous step, but let's double check)
+        grep -q "^\[multilib\]" /etc/pacman.conf || echo "WARNING: multilib might not be enabled in runner config!"
+        
+        # Force sync to ensure we see 'steam' etc.
+        pacman -Sy
+        
+        # Filter loop
+        # We read from all_requested.txt and output only those NOT in repos
+        touch aur_deps.txt
+        while read -r pkg; do
+            # Skip empty lines and comments
+            [[ -z "$pkg" || "$pkg" =~ ^# ]] && continue
+            
+            # Check if package exists in sync db
+            if ! pacman -Si "$pkg" &> /dev/null; then
+                echo "$pkg" >> aur_deps.txt
+            fi
+        done < /tmp/pkg-processing/all_requested.txt
+        # --- INLINED filter_aur.sh END ---
         
         echo "AUR Candidates:"
         cat aur_deps.txt

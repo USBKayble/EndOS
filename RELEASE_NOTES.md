@@ -7,7 +7,8 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-Fixed package retrieval process for the 19th time now.
+Fixed package retrieval process for the 20th time now.
+Migrated external scripts to inline for cleaner repo.
 
 ## Installation
 

@@ -12,13 +12,16 @@ if ! command -v pacman &> /dev/null; then
     exit 1
 fi
 
+# Ensure we have fresh DBs for accurate checking (Fixes false positives like steam/lib32-nvidia-utils)
+# We check for core.db or just force a sync if missing
+if [ ! -f /var/lib/pacman/sync/core.db ] && [ ! -f /var/lib/pacman/sync/multilib.db ]; then
+    echo "Syncing pacman databases..." >&2
+    pacman -Sy >&2
+fi
+
 while read -r pkg; do
     # Skip empty lines and comments
     [[ -z "$pkg" || "$pkg" =~ ^# ]] && continue
-
-    # Hardcoded safeguards for known multilib/repo packages that might trigger false positives
-    if [[ "$pkg" == "steam" ]]; then continue; fi
-    if [[ "$pkg" == "lib32-nvidia-utils" ]]; then continue; fi
     
     # Check if package exists in sync db
     if ! pacman -Si "$pkg" &> /dev/null; then
