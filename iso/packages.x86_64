@@ -1,4 +1,4 @@
-# --- Core System (Essential for Boot) ---
+# --- Core System ---
 base
 linux
 linux-firmware
@@ -7,173 +7,39 @@ intel-ucode
 mkinitcpio
 mkinitcpio-archiso
 archinstall
-# --- EndOS Desktop (From Dotfiles) ---
-# Audio
-cava
-pavucontrol-qt
-wireplumber
-pipewire-pulse
-libdbusmenu-gtk3
-playerctl
+sudo
 
-# Backlight
-geoclue
-brightnessctl
-ddcutil
-
-# Basic
-bc
-coreutils
-cliphist
-cmake
-curl
-wget
-ripgrep
-jq
-xdg-user-dirs
-rsync
-go-yq
-
-# Fonts & Themes
-adw-gtk-theme-git
-breeze
-# breeze-plus  # Likely AUR/Custom, ensure available or skip
-darkly-bin
-eza
-fish
-fontconfig
-kitty
-matugen-bin
-otf-space-grotesk
-starship
-ttf-jetbrains-mono-nerd
-ttf-material-symbols-variable-git
-ttf-readex-pro
-ttf-rubik-vf
-ttf-twemoji
-
-# Hyprland
-hyprland
-hyprsunset
-wl-clipboard
-
-# KDE / Qt Integration
-bluedevil
-gnome-keyring
-networkmanager
-plasma-nm
-polkit-kde-agent
-dolphin
-systemsettings
-
-# MicroTeX Deps
-tinyxml2
-gtkmm3
-gtksourceviewmm
-cairomm
-
-# Portals
-xdg-desktop-portal
-xdg-desktop-portal-kde
-xdg-desktop-portal-gtk
-xdg-desktop-portal-hyprland
-
-# Python Support
-clang
-uv
-gtk4
-libadwaita
-libsoup3
-libportal-gtk4
-gobject-introspection
-
-# Quickshell Deps
-qt6-declarative
-qt6-base
-jemalloc
-qt6-svg
-libpipewire
-libxcb
-wayland
-libdrm
-mesa
-google-breakpad
-qt6-5compat 
-qt6-avif-image-plugin
-qt6-imageformats
-qt6-multimedia
-qt6-positioning
-qt6-quicktimeline
-qt6-sensors
-qt6-svg
-qt6-tools
-qt6-translations
-qt6-virtualkeyboard
-qt6-wayland
-kirigami
-kdialog
-syntax-highlighting
-
-# Screencapture
-hyprshot
-slurp
-swappy
-tesseract
-tesseract-data-eng
-wf-recorder
-
-# Toolkit
-upower
-wtype
-ydotool
-
-# Widgets
-fuzzel
-glib2
-imagemagick
-hypridle
-hyprlock
-hyprpicker
-songrec
-translate-shell
-wlogout
-libqalculate
-
-# --- Shell ---
+# --- Shell & Tools ---
 zsh
 fish
-starship
-
-# --- Tools ---
 git
 neovim
 nano
-htop
 fastfetch
-firefox
 chaotic-keyring
 chaotic-mirrorlist
 
-# --- Offline Hardware Support ---
+# --- User Apps ---
+steam
+millennium-bin
+vesktop
+spotify
+spicetify-cli
+zen-browser-bin
+
+# --- Hardware & Drivers ---
 mesa
 lib32-mesa
-# --- VM Support (Critical for VirtualBox/QEMU) ---
-virtualbox-guest-utils
-xf86-video-qxl
-pciutils
-open-vm-tools
-pixman
 xf86-video-amdgpu
 xf86-video-ati
 xf86-video-intel
 xf86-video-nouveau
+xf86-video-vmware
+xf86-video-qxl
 vulkan-radeon
 lib32-vulkan-radeon
 vulkan-intel
 lib32-vulkan-intel
-sof-firmware
-linux-firmware-marvell
-# --- Nvidia Offline Support ---
 nvidia-dkms
 nvidia-utils
 lib32-nvidia-utils
@@ -182,3 +48,8 @@ opencl-nvidia
 dkms
 linux-headers
 linux-lts-headers
+
+# --- VM Support ---
+virtualbox-guest-utils
+open-vm-tools
+qemu-guest-agent

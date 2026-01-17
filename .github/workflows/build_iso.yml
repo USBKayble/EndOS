@@ -77,7 +77,7 @@ jobs:
 
         # Get list of AUR-only packages
         echo "Identifiying AUR packages..."
-        python util/extract_deps.py --aur-only iso-build/airootfs/usr/share/endos/dots/sdata/dist-arch > aur_deps.txt
+        bash util/collect_packages.sh --aur-only iso-build/airootfs/usr/share/endos/dots > aur_deps.txt
         cat aur_deps.txt
 
         # Build them
@@ -134,7 +134,7 @@ jobs:
         # We also extract dependencies from the cloned dots-hyprland repo.
         
         echo "Extracting Repo dependencies..."
-        python util/extract_deps.py --repo-only iso-build/airootfs/usr/share/endos/dots/sdata/dist-arch >> iso-build/packages.x86_64
+        bash util/collect_packages.sh --repo-only iso-build/airootfs/usr/share/endos/dots >> iso-build/packages.x86_64
         
         # Add AUR packages to package list
         cat aur_deps.txt >> iso-build/packages.x86_64
@@ -212,6 +212,34 @@ jobs:
             cp -a "$DOTS_SRC/dots/.local/." "$SKEL_DIR/.local/"
         else
             echo "WARNING: dots/.local not found in $DOTS_SRC"
+        fi
+
+        # 4.1a INSTALL PYTHON DEPENDENCIES (For Live User)
+        # Quickshell requires specific python packages in a venv.
+        echo "Installing Python dependencies for Live User..."
+        
+        # Ensure uv is installed on the runner
+        pacman -S --noconfirm uv
+        
+        VENV_DIR="$LIVE_HOME/.local/state/quickshell/.venv"
+        REQ_FILE="$DOTS_SRC/sdata/uv/requirements.txt"
+        
+        mkdir -p "$(dirname "$VENV_DIR")"
+        
+        # Use system python (Arch is rolling, usually latest)
+        # We rely on uv to create the venv and install packages.
+        # Note: We run this ON THE RUNNER, targeting the directory in the isolated FS.
+        # This works because we are same arch (x86_64).
+        export UV_NO_MODIFY_PATH=1
+        uv venv "$VENV_DIR"
+        
+        # Install requirements
+        if [ -f "$REQ_FILE" ]; then
+            source "$VENV_DIR/bin/activate"
+            uv pip install -r "$REQ_FILE"
+            deactivate
+        else
+            echo "WARNING: requirements.txt not found at $REQ_FILE"
         fi
         
         # Copy root dotfiles (bashrc, etc if they exist in dots root)

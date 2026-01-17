@@ -7,7 +7,7 @@ Do NOT remove the first line.
 -->
 ## Changes
 
-Cleaned up the package retrival to remove whitespaces causing errors in the build process.
+Cleaned up the system and improved the package retrieval process.
 
 ## Installation
 
