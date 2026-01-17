@@ -220,9 +220,11 @@ jobs:
         echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> iso-build/pacman.conf
         
         # 2.5 MERGE Package Lists
-        # We use the FULL requested list. 
-        # Since we've added the local repo, pacman will find both 'repo' pkgs and our built 'aur' pkgs.
-        cp /tmp/pkg-processing/all_requested.txt iso-build/packages.x86_64
+        # We append our requested packages to the default 'releng' list (which has syslinux, etc.)
+        cat /tmp/pkg-processing/all_requested.txt >> iso-build/packages.x86_64
+        
+        # Sort and unique to keep it clean
+        sort -u iso-build/packages.x86_64 -o iso-build/packages.x86_64
         
         # 2.5a RESOLVE CONFLICTS
         # 'releng' profile includes virtualbox-guest-utils-nox, but we want the full version (virtualbox-guest-utils) or none.
