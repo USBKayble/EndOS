@@ -117,9 +117,29 @@ runs:
       run: |
         SERVICES_DIR="iso-build/airootfs/etc/systemd/system/multi-user.target.wants"
         mkdir -p "$SERVICES_DIR"
+        
+        # Disable Archiso default networkd/resolved to allow NetworkManager to take over
+        rm -f "$SERVICES_DIR/systemd-networkd.service"
+        rm -f "$SERVICES_DIR/systemd-resolved.service"
+        rm -f "iso-build/airootfs/etc/systemd/system/dbus-org.freedesktop.resolve1.service"
+        rm -f "iso-build/airootfs/etc/systemd/system/dbus-org.freedesktop.network1.service"
+        
+        # Enable NetworkManager
         ln -sf /usr/lib/systemd/system/NetworkManager.service "$SERVICES_DIR/NetworkManager.service"
         ln -sf /usr/lib/systemd/system/bluetooth.service "$SERVICES_DIR/bluetooth.service"
         ln -sf /usr/lib/systemd/system/sshd.service "$SERVICES_DIR/sshd.service"
+        
+        # DEBUG: Verify Root Files & Permissions
+        echo "DEBUG: Listing /root to verify checks..."
+        ls -la iso-build/airootfs/root/
+        
+        echo "DEBUG: Ensuring log permissions..."
+        chown -R 0:0 iso-build/airootfs/log
+        chmod 777 iso-build/airootfs/log
+
+        # DEBUG: Verify Root Files
+        echo "DEBUG: Listing /root to verify checks..."
+        ls -la iso-build/airootfs/root/
 
     - name: Patch Boot Options
       shell: bash
