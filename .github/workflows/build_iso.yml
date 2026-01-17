@@ -36,10 +36,8 @@ jobs:
         # We use the geo-mirror endpoint which redirects to the best available mirror
         pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
         pacman-key --lsign-key 3056513887B78AEB
-        pacman -U 'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' --noconfirm
-
         # Enable Multilib (Critical for Steam, Wine, etc detection)
-        sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+        sed -i "/\[multilib\]/,/Include/"'s/^#[[:space:]]*//' /etc/pacman.conf
 
         # Append to pacman.conf
         echo "" >> /etc/pacman.conf
@@ -57,7 +55,6 @@ jobs:
         # 1. Start with a clean official 'releng' profile
         cp -r /usr/share/archiso/configs/releng iso-build
         
-        # 2. Inject ONLY our custom files into the standard profile
         # 2. Inject ALL custom files from our repo into the build profile
         # This includes .bash_profile, config.json, setup_arch.sh, dotfiles, and desktop shortcuts
         cp -a iso/airootfs/. iso-build/airootfs/
@@ -205,7 +202,7 @@ jobs:
         # 2.1 PATCH mkarchiso pacman.conf
         # The build tool uses this specific config file to resolve packages.
         # We must enable MULTILIB for 32-bit driver support (lib32-mesa, etc.)
-        sed -i "/\[multilib\]/,/Include/"'s/^#//' iso-build/pacman.conf
+        sed -i "/\[multilib\]/,/Include/"'s/^#[[:space:]]*//' iso-build/pacman.conf
         
         # We must add Chaotic AUR here so it can find AGS/swww.
         echo "" >> iso-build/pacman.conf
