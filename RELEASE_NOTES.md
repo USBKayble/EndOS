@@ -10,6 +10,7 @@ Do NOT remove the first line.
 - **Refactored Build System**: Removed dynamic package cloning and dotfile copying during the build.
 - **Improved Package Management**: Packages are now sourced directly from `packages.x86_64`.
 - **Python Support**: Restored `quickshell` Python dependencies via `uv`.
+- **Bootloader Config**: Updated to use `systemd-boot` for UEFI and `syslinux` for BIOS (standard Arch ISO configuration).
 - **Cleanup**: Removed legacy `setup_arch.sh`.
 
 
