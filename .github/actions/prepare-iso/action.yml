@@ -11,18 +11,6 @@ runs:
     - name: Inject Custom Files
       shell: bash
       run: |
-        cp -a iso/airootfs/. iso-build/airootfs/
+        cp -a iso/. iso-build/
 
-    - name: Copy Dotfiles
-      shell: bash
-      run: |
-        rm -rf iso-build/airootfs/usr/share/endos/dots
-        mkdir -p iso-build/airootfs/usr/share/endos/dots
 
-        if [ -d "dots-hyprland-main" ]; then
-            echo "Copying local dots-hyprland-main..."
-            cp -a dots-hyprland-main/. iso-build/airootfs/usr/share/endos/dots/
-        else
-            echo "WARNING: Local dots not found, cloning..."
-            git clone --recursive --depth 1 https://github.com/end-4/dots-hyprland.git iso-build/airootfs/usr/share/endos/dots
-        fi

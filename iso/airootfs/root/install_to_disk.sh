@@ -32,15 +32,11 @@ if [ -d "$TARGET_DIR/etc" ]; then
         cp -a /usr/share/endos/dots "$TARGET_DIR/usr/share/endos/"
     fi
     
-    # 3. Copy Setup Script
-    if [ -f "/root/setup_arch.sh" ]; then
-        echo "Copying setup script to /root/..."
-        cp /root/setup_arch.sh "$TARGET_DIR/root/"
-        chmod +x "$TARGET_DIR/root/setup_arch.sh"
-    fi
+    # 3. Copy Setup Script (Removed as setup_arch.sh is deprecated)
+    # The dotfiles in /usr/share/endos/dots can be used manually if needed.
     
     echo "Injection complete."
-    echo "When you reboot, run '/root/setup_arch.sh' to finalize configuration."
+    echo "Files available at /usr/share/endos in the new system."
     
     read -p "Press Enter to exit..."
 else

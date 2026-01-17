@@ -23,51 +23,7 @@ runs:
             "
         fi
 
-    - name: Identify Packages
-      shell: bash
-      run: |
-        echo "Collecting all requested packages..."
-        mkdir -p /tmp/pkg-processing
 
-        # Extract Dots Deps
-        (
-            DOTS_ROOT="iso-build/airootfs/usr/share/endos/dots"
-            METAPKGS=(
-                "illogical-impulse-audio"
-                "illogical-impulse-backlight"
-                "illogical-impulse-basic"
-                "illogical-impulse-fonts-themes"
-                "illogical-impulse-kde"
-                "illogical-impulse-portal"
-                "illogical-impulse-python"
-                "illogical-impulse-screencapture"
-                "illogical-impulse-toolkit"
-                "illogical-impulse-widgets"
-                "illogical-impulse-hyprland"
-                "illogical-impulse-microtex-git"
-                "illogical-impulse-quickshell-git"
-                "illogical-impulse-bibata-modern-classic-bin"
-            )
-
-            extract_deps() {
-                local pkg_dir="$1"
-                local full_path="$DOTS_ROOT/sdata/dist-arch/$pkg_dir"
-                if [ -f "$full_path/PKGBUILD" ]; then
-                    (
-                        depends=(); optdepends=(); makedepends=()
-                        source "$full_path/PKGBUILD"
-                        for dep in "${depends[@]}"; do echo "$dep"; done
-                    )
-                fi
-            }
-            for pkg in "${METAPKGS[@]}"; do extract_deps "$pkg"; done
-        ) | sort -u | grep -vE "^$" > /tmp/pkg-processing/dots.txt
-
-        # Get Manual Pkgs
-        sed '/^#/d; /^$/d' iso/packages.x86_64 > /tmp/pkg-processing/manual.txt
-
-        # Combine
-        cat /tmp/pkg-processing/dots.txt /tmp/pkg-processing/manual.txt | sort -u > /tmp/pkg-processing/all_requested.txt
 
     - name: Filter AUR vs Repo
       shell: bash
@@ -81,7 +37,7 @@ runs:
             if ! pacman -Si "$pkg" &> /dev/null; then
                 echo "$pkg" >> aur_deps.txt
             fi
-        done < /tmp/pkg-processing/all_requested.txt
+        done < iso-build/packages.x86_64
         
         echo "AUR Candidates:"
         cat aur_deps.txt

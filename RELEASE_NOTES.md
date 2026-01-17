@@ -6,12 +6,12 @@ The first line (Title) is used to generate the ISO filename.
 Do NOT remove the first line.
 -->
 ## Changes
-- **Critical Boot Fix**: Restored missing `archiso` hooks in `mkinitcpio.conf` which caused the "empty root" and "failed kernel modules" errors.
-- **Service Dependencies**: Added `plymouth`, `networkmanager`, `bluez`, and `wpa_supplicant` to resolve failed service startups.
-- **Refactored Build Process**: Migrated from monolithic bash scripts to modular GitHub Composite Actions.
-- **Dotfiles**: Validated `.local` and `.config` copying logic to ensure all user settings are applied.
-- **Network Fix**: Resolved conflict between `systemd-networkd` and `NetworkManager`.
-- **Graphical Environment**: Configured `.zlogin` for the live user to auto-start Hyprland.
+- **Fixed Root Persistence**: The root user now has a fully static home directory (`.config`, `.local`), solving the "no files" issue.
+- **Refactored Build System**: Removed dynamic package cloning and dotfile copying during the build.
+- **Improved Package Management**: Packages are now sourced directly from `packages.x86_64`.
+- **Python Support**: Restored `quickshell` Python dependencies via `uv`.
+- **Cleanup**: Removed legacy `setup_arch.sh`.
+
 
 ## Installation
 

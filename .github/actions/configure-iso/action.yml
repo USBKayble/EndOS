@@ -16,21 +16,7 @@ runs:
         echo "[chaotic-aur]" >> iso-build/pacman.conf
         echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> iso-build/pacman.conf
 
-    - name: Merge Package Lists
-      shell: bash
-      run: |
-        cat /tmp/pkg-processing/all_requested.txt >> iso-build/packages.x86_64
-        sort -u iso-build/packages.x86_64 -o iso-build/packages.x86_64
-        # Fix conflicts
-        sed -i '/virtualbox-guest-utils-nox/d' iso-build/packages.x86_64
 
-    - name: Verify Dotfiles
-      shell: bash
-      run: |
-        if [ ! -d "iso-build/airootfs/usr/share/endos/dots" ]; then
-            echo "ERROR: Dotfiles missing!"
-            exit 1
-        fi
 
     - name: Branding
       shell: bash
@@ -59,36 +45,17 @@ runs:
 
         # Setup Command
         mkdir -p iso-build/airootfs/usr/local/bin
-        ln -sf /root/setup_arch.sh iso-build/airootfs/usr/local/bin/setup
-        chmod +x iso-build/airootfs/root/setup_arch.sh
 
-        # Copy Dotfiles to Root & Skel
-        DOTS_SRC="iso-build/airootfs/usr/share/endos/dots"
-        LIVE_HOME="iso-build/airootfs/root"
-        SKEL_DIR="iso-build/airootfs/etc/skel"
-
-        mkdir -p "$LIVE_HOME/.config" "$LIVE_HOME/.local"
-        mkdir -p "$SKEL_DIR/.config" "$SKEL_DIR/.local"
-
-        if [ -d "$DOTS_SRC/dots/.config" ]; then
-            echo "Copying .config..."
-            cp -a "$DOTS_SRC/dots/.config/." "$LIVE_HOME/.config/"
-            cp -a "$DOTS_SRC/dots/.config/." "$SKEL_DIR/.config/"
-        fi
-        if [ -d "$DOTS_SRC/dots/.local" ]; then
-            echo "Copying .local..."
-            cp -a "$DOTS_SRC/dots/.local/." "$LIVE_HOME/.local/"
-            cp -a "$DOTS_SRC/dots/.local/." "$SKEL_DIR/.local/"
-        else
-            echo "WARNING: .local not found in dots source!"
-        fi
         
-        chown -R 0:0 "$LIVE_HOME"
+        # Permissions for static files are handled in profiledef.sh, 
+        # but ensuring ownership here is a good safety net
+        chown -R 0:0 iso-build/airootfs/root
 
         # Auto-login/start check
         # Archiso Releng uses ZSH by default for root.
         # We have a robust init script in .bash_profile (from iso/airootfs/root/.bash_profile)
         # We should make sure .zlogin uses it.
+        LIVE_HOME="iso-build/airootfs/root"
         if [ -f "$LIVE_HOME/.bash_profile" ]; then
             echo "Converting .bash_profile to .zlogin for ZSH..."
             # ZSH is compatible enough for this script
@@ -100,15 +67,17 @@ runs:
             echo "if [ -z \"\$DISPLAY\" ] && [ \"\$(tty)\" = \"/dev/tty1\" ]; then exec Hyprland; fi" >> "$LIVE_HOME/.zlogin"
         fi
 
+
+
     - name: Python Dependencies
       shell: bash
       run: |
         VENV_DIR="iso-build/airootfs/root/.local/state/quickshell/.venv"
-        REQ_FILE="iso-build/airootfs/usr/share/endos/dots/sdata/uv/requirements.txt"
+        REQ_FILE="iso-build/requirements.txt"
         mkdir -p "$(dirname "$VENV_DIR")"
         
         export UV_NO_MODIFY_PATH=1
-        uv venv "$VENV_DIR"
+        uv venv "$VENV_DIR" --python 3.12
         
         if [ -f "$REQ_FILE" ]; then
             source "$VENV_DIR/bin/activate"
