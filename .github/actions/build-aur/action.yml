@@ -1,0 +1,113 @@
+name: 'Build AUR Packages'
+description: 'Identify and build missing packages'
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare Builder User
+      shell: bash
+      run: |
+        if ! id "builder" &>/dev/null; then
+            useradd -m builder
+            echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+        fi
+        chmod 777 .
+
+    - name: Install Yay
+      shell: bash
+      run: |
+        if ! command -v yay &> /dev/null; then
+            su builder -c "
+                git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
+                cd /tmp/yay-bin
+                makepkg -si --noconfirm
+            "
+        fi
+
+    - name: Identify Packages
+      shell: bash
+      run: |
+        echo "Collecting all requested packages..."
+        mkdir -p /tmp/pkg-processing
+
+        # Extract Dots Deps
+        (
+            DOTS_ROOT="iso-build/airootfs/usr/share/endos/dots"
+            METAPKGS=(
+                "illogical-impulse-audio"
+                "illogical-impulse-backlight"
+                "illogical-impulse-basic"
+                "illogical-impulse-fonts-themes"
+                "illogical-impulse-kde"
+                "illogical-impulse-portal"
+                "illogical-impulse-python"
+                "illogical-impulse-screencapture"
+                "illogical-impulse-toolkit"
+                "illogical-impulse-widgets"
+                "illogical-impulse-hyprland"
+                "illogical-impulse-microtex-git"
+                "illogical-impulse-quickshell-git"
+                "illogical-impulse-bibata-modern-classic-bin"
+            )
+
+            extract_deps() {
+                local pkg_dir="$1"
+                local full_path="$DOTS_ROOT/sdata/dist-arch/$pkg_dir"
+                if [ -f "$full_path/PKGBUILD" ]; then
+                    (
+                        depends=(); optdepends=(); makedepends=()
+                        source "$full_path/PKGBUILD"
+                        for dep in "${depends[@]}"; do echo "$dep"; done
+                    )
+                fi
+            }
+            for pkg in "${METAPKGS[@]}"; do extract_deps "$pkg"; done
+        ) | sort -u | grep -vE "^$" > /tmp/pkg-processing/dots.txt
+
+        # Get Manual Pkgs
+        sed '/^#/d; /^$/d' iso/packages.x86_64 > /tmp/pkg-processing/manual.txt
+
+        # Combine
+        cat /tmp/pkg-processing/dots.txt /tmp/pkg-processing/manual.txt | sort -u > /tmp/pkg-processing/all_requested.txt
+
+    - name: Filter AUR vs Repo
+      shell: bash
+      run: |
+        # Ensure sync
+        pacman -Sy
+        
+        touch aur_deps.txt
+        while read -r pkg; do
+            [[ -z "$pkg" || "$pkg" =~ ^# ]] && continue
+            if ! pacman -Si "$pkg" &> /dev/null; then
+                echo "$pkg" >> aur_deps.txt
+            fi
+        done < /tmp/pkg-processing/all_requested.txt
+        
+        echo "AUR Candidates:"
+        cat aur_deps.txt
+
+    - name: Build AUR
+      shell: bash
+      run: |
+        mkdir -p repo
+        chown builder:builder repo
+        
+        if [ -s aur_deps.txt ]; then
+            echo "Building AUR packages..."
+            su builder -c "
+                mkdir -p /tmp/aur-build
+                yay -S --noconfirm --builddir /tmp/aur-build \$(cat aur_deps.txt)
+                find /tmp/aur-build -name '*.pkg.tar.zst' -exec cp {} repo/ \;
+                cd repo
+                repo-add endos-local.db.tar.gz *.pkg.tar.zst
+            "
+        else
+            echo "No AUR deps found, creating empty repo"
+            su builder -c "cd repo && repo-add endos-local.db.tar.gz"
+        fi
+
+    - name: Register Local Repo
+      shell: bash
+      run: |
+        REPO_PATH="$(pwd)/repo"
+        sed -i '1i[endos-local]\nSigLevel = Optional TrustAll\nServer = file://'"$REPO_PATH" iso-build/pacman.conf

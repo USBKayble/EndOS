@@ -1,0 +1,128 @@
+name: 'Configure EndOS ISO'
+description: 'Final configuration, branding, and services'
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Pacman
+      shell: bash
+      run: |
+        # Enable Multilib
+        if ! grep -q "^\[multilib\]" iso-build/pacman.conf; then
+            echo "[multilib]" >> iso-build/pacman.conf
+            echo "Include = /etc/pacman.d/mirrorlist" >> iso-build/pacman.conf
+        fi
+        # Enable Chaotic
+        echo "" >> iso-build/pacman.conf
+        echo "[chaotic-aur]" >> iso-build/pacman.conf
+        echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> iso-build/pacman.conf
+
+    - name: Merge Package Lists
+      shell: bash
+      run: |
+        cat /tmp/pkg-processing/all_requested.txt >> iso-build/packages.x86_64
+        sort -u iso-build/packages.x86_64 -o iso-build/packages.x86_64
+        # Fix conflicts
+        sed -i '/virtualbox-guest-utils-nox/d' iso-build/packages.x86_64
+
+    - name: Verify Dotfiles
+      shell: bash
+      run: |
+        if [ ! -d "iso-build/airootfs/usr/share/endos/dots" ]; then
+            echo "ERROR: Dotfiles missing!"
+            exit 1
+        fi
+
+    - name: Branding
+      shell: bash
+      run: |
+        sed -i 's/iso_name="archlinux"/iso_name="EndOS"/' iso-build/profiledef.sh
+        sed -i 's/iso_label="ARCH_$(date +%Y%m)"/iso_label="ENDOS_$(date +%Y%m)"/' iso-build/profiledef.sh
+        sed -i 's/iso_publisher="Arch Linux <https:\/\/archlinux.org>"/iso_publisher="EndOS <https:\/\/github.com\/USBKayble\/EndOS>"/' iso-build/profiledef.sh
+        sed -i 's/iso_application="Arch Linux Live\/Rescue CD"/iso_application="EndOS Live\/Rescue CD"/' iso-build/profiledef.sh
+
+    - name: Configure Plymouth
+      shell: bash
+      run: |
+        cat > iso-build/airootfs/etc/mkinitcpio.conf <<EOF
+        MODULES=()
+        BINARIES=()
+        FILES=()
+        HOOKS=(base udev plymouth modconf kms block filesystems fsck)
+        EOF
+
+    - name: Configure Live User Env
+      shell: bash
+      run: |
+        # Logs
+        mkdir -p iso-build/airootfs/log
+        chmod 777 iso-build/airootfs/log
+
+        # Setup Command
+        mkdir -p iso-build/airootfs/usr/local/bin
+        ln -sf /root/setup_arch.sh iso-build/airootfs/usr/local/bin/setup
+        chmod +x iso-build/airootfs/root/setup_arch.sh
+
+        # Copy Dotfiles to Root & Skel
+        DOTS_SRC="iso-build/airootfs/usr/share/endos/dots"
+        LIVE_HOME="iso-build/airootfs/root"
+        SKEL_DIR="iso-build/airootfs/etc/skel"
+
+        mkdir -p "$LIVE_HOME/.config" "$LIVE_HOME/.local"
+        mkdir -p "$SKEL_DIR/.config" "$SKEL_DIR/.local"
+
+        if [ -d "$DOTS_SRC/dots/.config" ]; then
+            cp -a "$DOTS_SRC/dots/.config/." "$LIVE_HOME/.config/"
+            cp -a "$DOTS_SRC/dots/.config/." "$SKEL_DIR/.config/"
+        fi
+        if [ -d "$DOTS_SRC/dots/.local" ]; then
+            cp -a "$DOTS_SRC/dots/.local/." "$LIVE_HOME/.local/"
+            cp -a "$DOTS_SRC/dots/.local/." "$SKEL_DIR/.local/"
+        fi
+        
+        chown -R 0:0 "$LIVE_HOME"
+
+        # Auto-login/start check
+        # Archiso Releng uses ZSH by default for root.
+        # We have a robust init script in .bash_profile (from iso/airootfs/root/.bash_profile)
+        # We should make sure .zlogin uses it.
+        if [ -f "$LIVE_HOME/.bash_profile" ]; then
+            echo "Converting .bash_profile to .zlogin for ZSH..."
+            # ZSH is compatible enough for this script
+            cp "$LIVE_HOME/.bash_profile" "$LIVE_HOME/.zlogin"
+            # Ensure permissions
+            chmod +x "$LIVE_HOME/.zlogin"
+        else
+            echo "WARNING: .bash_profile not found in root. Creating fallback .zlogin"
+            echo "if [ -z \"\$DISPLAY\" ] && [ \"\$(tty)\" = \"/dev/tty1\" ]; then exec Hyprland; fi" >> "$LIVE_HOME/.zlogin"
+        fi
+
+    - name: Python Dependencies
+      shell: bash
+      run: |
+        VENV_DIR="iso-build/airootfs/root/.local/state/quickshell/.venv"
+        REQ_FILE="iso-build/airootfs/usr/share/endos/dots/sdata/uv/requirements.txt"
+        mkdir -p "$(dirname "$VENV_DIR")"
+        
+        export UV_NO_MODIFY_PATH=1
+        uv venv "$VENV_DIR"
+        
+        if [ -f "$REQ_FILE" ]; then
+            source "$VENV_DIR/bin/activate"
+            uv pip install -r "$REQ_FILE"
+            deactivate
+        fi
+
+    - name: Enable Services
+      shell: bash
+      run: |
+        SERVICES_DIR="iso-build/airootfs/etc/systemd/system/multi-user.target.wants"
+        mkdir -p "$SERVICES_DIR"
+        ln -sf /usr/lib/systemd/system/NetworkManager.service "$SERVICES_DIR/NetworkManager.service"
+        ln -sf /usr/lib/systemd/system/bluetooth.service "$SERVICES_DIR/bluetooth.service"
+        ln -sf /usr/lib/systemd/system/sshd.service "$SERVICES_DIR/sshd.service"
+
+    - name: Patch Boot Options
+      shell: bash
+      run: |
+        find iso-build/syslinux -name "*.cfg" -exec sed -i 's/archisobasedir/splash quiet archisobasedir/g' {} +
+        find iso-build/grub -name "grub.cfg" -exec sed -i 's/loglevel=3/loglevel=3 splash quiet/g' {} +
