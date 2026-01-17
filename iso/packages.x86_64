@@ -8,6 +8,12 @@ mkinitcpio
 mkinitcpio-archiso
 archinstall
 sudo
+plymouth
+networkmanager
+wpa_supplicant
+wireless_tools
+bluez
+bluez-utils
 
 # --- Shell & Tools ---
 zsh

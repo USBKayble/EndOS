@@ -6,11 +6,12 @@ The first line (Title) is used to generate the ISO filename.
 Do NOT remove the first line.
 -->
 ## Changes
-- **Refactored Build Process**: Migrated from monolithic bash scripts to modular GitHub Composite Actions for better debugging and code organization.
-- **Network Fix**: Resolved conflict between `systemd-networkd` and `NetworkManager` to ensure networking works out of the box.
-- **Graphical Environment**: Fixed `sddm`/`hyprland` startup issue by correctly configuring `.zlogin` for the live user.
-- **Dotfiles**: Fixed dotfiles integration by using the local `dots-hyprland-main` source and ensuring correct paths in `/root` and `/etc/skel`.
-- **Debugging**: Added detailed build logs to verify file presence and permissions.
+- **Critical Boot Fix**: Restored missing `archiso` hooks in `mkinitcpio.conf` which caused the "empty root" and "failed kernel modules" errors.
+- **Service Dependencies**: Added `plymouth`, `networkmanager`, `bluez`, and `wpa_supplicant` to resolve failed service startups.
+- **Refactored Build Process**: Migrated from monolithic bash scripts to modular GitHub Composite Actions.
+- **Dotfiles**: Validated `.local` and `.config` copying logic to ensure all user settings are applied.
+- **Network Fix**: Resolved conflict between `systemd-networkd` and `NetworkManager`.
+- **Graphical Environment**: Configured `.zlogin` for the live user to auto-start Hyprland.
 
 ## Installation
 
