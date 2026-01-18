@@ -58,10 +58,16 @@ build_aur_package() {
 download_official_package() {
     local package="$1"
 
-    # Clean up any partials
+    # Clean up any previous downloads in the local repo directory
+    rm -rf download-* 2>/dev/null || true
     rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
 
-    if pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+    # Download with sudo but ensure files end up in local_repo dir
+    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+        # Move downloaded package to current directory (in case it was in a subdir)
+        find . -maxdepth 2 -name "${package}-[0-9]*.pkg.tar.zst" -exec mv {} . \; 2>/dev/null || true
+        # Clean up any root-owned download directories
+        echo "$SUDO_PASS" | sudo -S rm -rf download-* 2>/dev/null || true
         echo "  Downloaded $package"
         ((BUILT_COUNT++))
     else
