@@ -7,6 +7,16 @@
 # Exit on error
 set -e
 
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Error: This script must be run as root."
+    echo "Please run: sudo $0"
+    exit 1
+fi
+
+# Keep-alive: update existing sudo time stamp if set, otherwise do nothing.
+while true; do sudo -v; sleep 10; kill -0 "$$" || exit; done 2>/dev/null &
+
 # AUR build function
 build_aur_package() {
     local package="$1"
@@ -58,16 +68,10 @@ build_aur_package() {
 download_official_package() {
     local package="$1"
 
-    # Clean up any previous downloads in the local repo directory
-    rm -rf download-* 2>/dev/null || true
+    # Clean up any partials
     rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
 
-    # Download with sudo but ensure files end up in local_repo dir
-    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
-        # Move downloaded package to current directory (in case it was in a subdir)
-        find . -maxdepth 2 -name "${package}-[0-9]*.pkg.tar.zst" -exec mv {} . \; 2>/dev/null || true
-        # Clean up any root-owned download directories
-        echo "$SUDO_PASS" | sudo -S rm -rf download-* 2>/dev/null || true
+    if pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
         echo "  Downloaded $package"
         ((BUILT_COUNT++))
     else
@@ -77,18 +81,6 @@ download_official_package() {
 }
 
 echo "Starting local repository creation..."
-
-# Ask for sudo upfront and capture password
-read -s -p "Enter sudo password: " SUDO_PASS
-echo
-# Verify password
-if ! echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; then
-    echo "Incorrect password."
-    exit 1
-fi
-
-# Keep-alive: update existing sudo time stamp if set, otherwise do nothing.
-while true; do echo "$SUDO_PASS" | sudo -S -v; sleep 10; kill -0 "$$" || exit; done 2>/dev/null &
 
 # Define paths relative to the script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -108,7 +100,7 @@ cd "$LOCAL_REPO_DIR"
 
 # Sync databases using system pacman
 echo "Syncing package databases..."
-echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm
+pacman -Sy --noconfirm
 
 LOG_FILE="$SCRIPT_DIR/repo_build.log"
 echo "Log file: $LOG_FILE"

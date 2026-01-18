@@ -29,7 +29,7 @@ echo "=== Step 2: Downloading/Building Wheels ==="
 ./download_wheels.sh
 
 echo "=== Step 3: Creating Local Repository ==="
-./create_local_repo.sh
+sudo ./create_local_repo.sh
 
 echo "=== Step 4: Building ISO with mkarchiso ==="
 
