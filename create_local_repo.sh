@@ -7,6 +7,69 @@
 # Exit on error
 set -e
 
+# AUR build function
+build_aur_package() {
+    local package="$1"
+    local AUR_PKG_NAME="$package"
+
+    # Mapping for renamed packages
+    case "$package" in
+        otf-space-grotesk) AUR_PKG_NAME="38c3-styles" ;;
+        ttf-material-symbols-variable-git) AUR_PKG_NAME="material-symbols-git" ;;
+        qt6-avif-image-plugin) AUR_PKG_NAME="qt5-avif-image-plugin" ;;
+    esac
+
+    # Clean up any previous attempts
+    rm -rf "$AUR_PKG_NAME"
+
+    echo "  Cloning $AUR_PKG_NAME from AUR..."
+    if ! git clone "https://aur.archlinux.org/${AUR_PKG_NAME}.git" 2>> "$LOG_FILE"; then
+        echo "  ERROR: Failed to clone $AUR_PKG_NAME"
+        FAILED_PACKAGES+=("$package")
+        return 1
+    fi
+
+    cd "$AUR_PKG_NAME"
+
+    # Hotfix for 38c3-styles
+    if [ "$AUR_PKG_NAME" == "38c3-styles" ]; then
+        echo "  Applying hotfix for 38c3-styles..."
+        sed -i "/'html2markdown'/d" PKGBUILD 2>/dev/null || true
+        sed -i "/html2markdown --input/d" PKGBUILD 2>/dev/null || true
+        sed -i "s/ website.md//g" PKGBUILD 2>/dev/null || true
+    fi
+
+    echo "  Building $package..."
+    if makepkg -sc --noconfirm >> "$LOG_FILE" 2>&1; then
+        echo "  Successfully built $package"
+        mv *.pkg.tar.zst ../
+        cd ..
+        rm -rf "$AUR_PKG_NAME"
+        ((BUILT_COUNT++))
+    else
+        echo "  ERROR: Failed to build $package"
+        cd ..
+        rm -rf "$AUR_PKG_NAME"
+        FAILED_PACKAGES+=("$package")
+    fi
+}
+
+# Official package download function
+download_official_package() {
+    local package="$1"
+
+    # Clean up any partials
+    echo "$SUDO_PASS" | sudo -S rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
+
+    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+        echo "  Downloaded $package"
+        ((BUILT_COUNT++))
+    else
+        echo "  ERROR: Failed to download $package"
+        FAILED_PACKAGES+=("$package")
+    fi
+}
+
 echo "Starting local repository creation..."
 
 # Ask for sudo upfront and capture password
@@ -92,9 +155,6 @@ while IFS= read -r package; do
 
 done < "$PACKAGES_FILE"
 
-# Clean up temp file
-rm -f "$TEMP_PACKAGES_FILE"
-
 # Finalize database
 echo "Finalizing local repository database..."
 repo-add local_repo.db.tar.gz *.pkg.tar.zst 2>/dev/null || true
@@ -114,66 +174,3 @@ if [ ${#FAILED_PACKAGES[@]} -ne 0 ]; then
 else
     echo "All packages built successfully!"
 fi
-
-# AUR build function
-build_aur_package() {
-    local package="$1"
-    local AUR_PKG_NAME="$package"
-
-    # Mapping for renamed packages
-    case "$package" in
-        otf-space-grotesk) AUR_PKG_NAME="38c3-styles" ;;
-        ttf-material-symbols-variable-git) AUR_PKG_NAME="material-symbols-git" ;;
-        qt6-avif-image-plugin) AUR_PKG_NAME="qt5-avif-image-plugin" ;;
-    esac
-
-    # Clean up any previous attempts
-    rm -rf "$AUR_PKG_NAME"
-
-    echo "  Cloning $AUR_PKG_NAME from AUR..."
-    if ! git clone "https://aur.archlinux.org/${AUR_PKG_NAME}.git" 2>> "$LOG_FILE"; then
-        echo "  ERROR: Failed to clone $AUR_PKG_NAME"
-        FAILED_PACKAGES+=("$package")
-        return 1
-    fi
-
-    cd "$AUR_PKG_NAME"
-
-    # Hotfix for 38c3-styles
-    if [ "$AUR_PKG_NAME" == "38c3-styles" ]; then
-        echo "  Applying hotfix for 38c3-styles..."
-        sed -i "/'html2markdown'/d" PKGBUILD 2>/dev/null || true
-        sed -i "/html2markdown --input/d" PKGBUILD 2>/dev/null || true
-        sed -i "s/ website.md//g" PKGBUILD 2>/dev/null || true
-    fi
-
-    echo "  Building $package..."
-    if makepkg -sc --noconfirm >> "$LOG_FILE" 2>&1; then
-        echo "  Successfully built $package"
-        mv *.pkg.tar.zst ../
-        cd ..
-        rm -rf "$AUR_PKG_NAME"
-        ((BUILT_COUNT++))
-    else
-        echo "  ERROR: Failed to build $package"
-        cd ..
-        rm -rf "$AUR_PKG_NAME"
-        FAILED_PACKAGES+=("$package")
-    fi
-}
-
-# Official package download function
-download_official_package() {
-    local package="$1"
-
-    # Clean up any partials
-    echo "$SUDO_PASS" | sudo -S rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
-
-    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
-        echo "  Downloaded $package"
-        ((BUILT_COUNT++))
-    else
-        echo "  ERROR: Failed to download $package"
-        FAILED_PACKAGES+=("$package")
-    fi
-}
