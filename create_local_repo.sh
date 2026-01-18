@@ -59,9 +59,9 @@ download_official_package() {
     local package="$1"
 
     # Clean up any partials
-    echo "$SUDO_PASS" | sudo -S rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
+    rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
 
-    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+    if pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
         echo "  Downloaded $package"
         ((BUILT_COUNT++))
     else
