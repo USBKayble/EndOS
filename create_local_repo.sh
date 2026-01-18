@@ -25,7 +25,7 @@ while true; do echo "$SUDO_PASS" | sudo -S -v; sleep 10; kill -0 "$$" || exit; d
 
 # Define paths relative to the script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCAL_REPO_DIR="$SCRIPT_DIR/iso/local_repo"
+LOCAL_REPO_DIR="$SCRIPT_DIR/local_repo"
 PACKAGES_FILE="$SCRIPT_DIR/iso/packages.x86_64"
 
 # Create a directory for the local repository
