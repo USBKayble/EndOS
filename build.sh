@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Error: This script must be run as root."
+    echo "Please run: sudo $0"
+    exit 1
+fi
+
 # build.sh
 # Main build script for EndOS ISO
 
@@ -29,8 +36,8 @@ echo "=== Step 2: Downloading/Building Wheels ==="
 ./download_wheels.sh
 
 echo "=== Step 3: Creating Local Repository ==="
-sudo ./create_local_repo.sh
+./create_local_repo.sh
 
 echo "=== Step 4: Building ISO with mkarchiso ==="
 
-sudo mkarchiso -v -r -w work -o out iso
+mkarchiso -v -r -w work -o out iso

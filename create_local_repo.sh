@@ -7,7 +7,7 @@
 # Exit on error
 set -e
 
-# Check if running as root
+# Check if running as root (for direct execution)
 if [ "$EUID" -ne 0 ]; then
     echo "Error: This script must be run as root."
     echo "Please run: sudo $0"
