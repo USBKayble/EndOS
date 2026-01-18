@@ -17,12 +17,6 @@ if ! echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; then
     exit 1
 fi
 
-echo "Syncing package databases..."
-echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm
-
-# Keep-alive: update existing sudo time stamp if set, otherwise do nothing.
-while true; do echo "$SUDO_PASS" | sudo -S -v; sleep 10; kill -0 "$$" || exit; done 2>/dev/null &
-
 # Define paths relative to the script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_REPO_DIR="$SCRIPT_DIR/local_repo"
@@ -55,7 +49,17 @@ fi
 
 # Sync databases using the ISO config to ensure multilib/chaotic-aur are up to date
 echo "Syncing package databases..."
-echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sy --noconfirm
+if ! echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sy --noconfirm 2>&1; then
+    echo "Warning: Database sync failed, rebuilding local_repo database..."
+    # Rebuild database from any existing packages
+    if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
+        rm -f local_repo.db* local_repo.files*
+        repo-add local_repo.db.tar.gz *.pkg.tar.zst
+        echo "Local repository database rebuilt."
+    else
+        echo "No packages found to rebuild database."
+    fi
+fi
 
 LOG_FILE="$SCRIPT_DIR/repo_build.log"
 echo "Log file: $LOG_FILE"
