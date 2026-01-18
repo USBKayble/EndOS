@@ -40,8 +40,9 @@ fi
 cd "$LOCAL_REPO_DIR" || exit 1
 
 # Initialize a local repository
-# Rebuild local repository database to remove ghost packages and ensure consistency
-echo "Rebuilding local repository database..."
+# Clean the local repo directory first for a fresh start
+echo "Cleaning local repository directory..."
+rm -f *.pkg.tar.zst
 rm -f local_repo.db* local_repo.files*
 
 # Add all existing packages to the new database
