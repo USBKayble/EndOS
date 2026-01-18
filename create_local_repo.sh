@@ -37,26 +37,9 @@ rm -rf "$LOCAL_REPO_DIR"
 mkdir -p "$LOCAL_REPO_DIR"
 cd "$LOCAL_REPO_DIR"
 
-# Create a temporary pacman.conf without local_repo for downloads
-TEMP_PACMAN_CONF=$(mktemp)
-cat > "$TEMP_PACMAN_CONF" << 'EOF'
-[options]
-Architecture = auto
-ParallelDownloads = 5
-
-[core]
-Include = /etc/pacman.d/mirrorlist
-
-[extra]
-Include = /etc/pacman.d/mirrorlist
-
-#[multilib]
-#Include = /etc/pacman.d/mirrorlist
-EOF
-
-# Sync databases using system config (without local_repo)
+# Sync databases using system pacman
 echo "Syncing package databases..."
-echo "$SUDO_PASS" | sudo -S pacman --config "$TEMP_PACMAN_CONF" -Sy --noconfirm
+echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm
 
 LOG_FILE="$SCRIPT_DIR/repo_build.log"
 echo "Log file: $LOG_FILE"
@@ -109,8 +92,7 @@ while IFS= read -r package; do
 
 done < "$PACKAGES_FILE"
 
-# Clean up temp files
-rm -f "$TEMP_PACMAN_CONF"
+# Clean up temp file
 rm -f "$TEMP_PACKAGES_FILE"
 
 # Finalize database
@@ -187,7 +169,7 @@ download_official_package() {
     # Clean up any partials
     echo "$SUDO_PASS" | sudo -S rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
 
-    if echo "$SUDO_PASS" | sudo -S pacman --config "$TEMP_PACMAN_CONF" -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+    if echo "$SUDO_PASS" | sudo -S pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
         echo "  Downloaded $package"
         ((BUILT_COUNT++))
     else
