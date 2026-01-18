@@ -14,6 +14,10 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Get the original user who invoked sudo
+ORIGINAL_USER="${SUDO_USER:-$(whoami)}"
+BUILD_USER="${ORIGINAL_USER}"
+
 # Keep-alive: update existing sudo time stamp if set, otherwise do nothing.
 while true; do sudo -v; sleep 10; kill -0 "$$" || exit; done 2>/dev/null &
 
@@ -49,8 +53,10 @@ build_aur_package() {
         sed -i "s/ website.md//g" PKGBUILD 2>/dev/null || true
     fi
 
-    echo "  Building $package..."
-    if makepkg -sc --noconfirm >> "$LOG_FILE" 2>&1; then
+    echo "  Building $package as $BUILD_USER..."
+    
+    # Run makepkg as the non-root user to avoid "running makepkg as root" error
+    if su - "$BUILD_USER" -c "cd '$PWD' && makepkg -sc --noconfirm" >> "$LOG_FILE" 2>&1; then
         echo "  Successfully built $package"
         mv *.pkg.tar.zst ../
         cd ..
@@ -68,16 +74,22 @@ build_aur_package() {
 download_official_package() {
     local package="$1"
 
-    # Clean up any partials
-    rm -f "$package"*.part "$package"*.pkg.tar.zst 2>/dev/null || true
-
-    if pacman -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+    # Create a clean temp directory for this download
+    local temp_dir=$(mktemp -d)
+    
+    # Use yes to auto-answer any prompts
+    if yes | pacman -Sw --noconfirm --cachedir "$temp_dir" "$package" >> "$LOG_FILE" 2>&1; then
+        # Move downloaded package to local_repo
+        find "$temp_dir" -name "${package}-[0-9]*.pkg.tar.zst" -exec mv {} . \; 2>/dev/null || true
         echo "  Downloaded $package"
         ((BUILT_COUNT++))
     else
         echo "  ERROR: Failed to download $package"
         FAILED_PACKAGES+=("$package")
     fi
+    
+    # Clean up temp directory
+    rm -rf "$temp_dir"
 }
 
 echo "Starting local repository creation..."
