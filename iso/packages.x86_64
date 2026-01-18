@@ -1,5 +1,4 @@
-
-adw-gtk-theme-git
+adw-gtk-theme
 amd-ucode
 archinstall
 base
@@ -8,7 +7,6 @@ bluedevil
 bluez
 bluez-utils
 breeze
-breeze-plus
 brightnessctl
 cairomm
 cava
@@ -19,13 +17,11 @@ cliphist
 cmake
 coreutils
 curl
-darkly-bin
 ddcutil
 dkms
 dolphin
 eza
 fastfetch
-fish
 fish
 fontconfig
 fuzzel
@@ -34,7 +30,6 @@ git
 glib2
 gnome-keyring
 gobject-introspection
-google-breakpad
 go-yq
 gtk4
 gtkmm3
@@ -68,17 +63,14 @@ linux
 linux-firmware
 linux-headers
 linux-lts-headers
-matugen-bin
+matugen
 mesa
-mesa
-millennium
 mkinitcpio
 mkinitcpio-archiso
 nano
 neovim
 networkmanager
-networkmanager
-nvidia-dkms
+nvidia-open-dkms
 nvidia-settings
 nvidia-utils
 opencl-nvidia
@@ -91,8 +83,8 @@ playerctl
 plymouth
 polkit-kde-agent
 qemu-guest-agent
+python-dbus
 qt6-5compat
-qt6-avif-image-plugin
 qt6-base
 qt6-declarative
 qt6-imageformats
@@ -116,6 +108,7 @@ steam
 sudo
 swappy
 syntax-highlighting
+syslinux
 systemsettings
 tesseract
 tesseract-data-eng
@@ -128,7 +121,7 @@ ttf-rubik-vf
 ttf-twemoji
 upower
 uv
-vesktop-bin
+vesktop
 virtualbox-guest-utils
 vulkan-intel
 vulkan-radeon
@@ -154,5 +147,6 @@ xf86-video-qxl
 ydotool
 zen-browser-bin
 zsh
-syslinux
-efibootmgr
+terminus-font
+grml-zsh-config
+konsole

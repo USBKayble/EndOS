@@ -1,3 +1,6 @@
 # Ignore large binary files and extracted repos
 dots-hyprland-main
-*.zip
+iso/local_repo
+repo_build.log
+work
+out
