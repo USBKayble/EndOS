@@ -33,10 +33,17 @@ fi
 # Navigate to the local repository directory
 cd "$LOCAL_REPO_DIR" || exit 1
 
-# Initialize a local repository
-# Clean the local repo directory first for a fresh start
-echo "Cleaning local repository directory..."
-rm -f *.pkg.tar.zst
+# Check for packages in old location and copy if exists
+if [ -d "$SCRIPT_DIR/iso/local_repo" ]; then
+    echo "Checking for existing packages in iso/local_repo..."
+    if [ "$(ls -A "$SCRIPT_DIR/iso/local_repo"/*.pkg.tar.zst 2>/dev/null)" ]; then
+        echo "Copying existing packages from iso/local_repo..."
+        cp "$SCRIPT_DIR/iso/local_repo"/*.pkg.tar.zst . 2>/dev/null || true
+    fi
+fi
+
+# Rebuild database to ensure consistency (doesn't remove packages)
+echo "Rebuilding local repository database..."
 rm -f local_repo.db* local_repo.files*
 
 # Add all existing packages to the new database
@@ -47,18 +54,28 @@ else
     echo "No existing packages found. Database will be created on first add."
 fi
 
-# Sync databases using the ISO config to ensure multilib/chaotic-aur are up to date
+# Create a temporary pacman.conf without local_repo for downloads
+# This prevents pacman from looking in local_repo first (which would fail)
+TEMP_PACMAN_CONF=$(mktemp)
+cat > "$TEMP_PACMAN_CONF" << 'EOF'
+[options]
+Architecture = auto
+ParallelDownloads = 5
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+#[multilib]
+#Include = /etc/pacman.d/mirrorlist
+EOF
+
+# Sync databases using system config (without local_repo)
 echo "Syncing package databases..."
-if ! echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sy --noconfirm 2>&1; then
-    echo "Warning: Database sync failed, rebuilding local_repo database..."
-    # Rebuild database from any existing packages
-    if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
-        rm -f local_repo.db* local_repo.files*
-        repo-add local_repo.db.tar.gz *.pkg.tar.zst
-        echo "Local repository database rebuilt."
-    else
-        echo "No packages found to rebuild database."
-    fi
+if ! echo "$SUDO_PASS" | sudo -S pacman --config "$TEMP_PACMAN_CONF" -Sy --noconfirm 2>&1; then
+    echo "Warning: Database sync failed, continuing anyway..."
 fi
 
 LOG_FILE="$SCRIPT_DIR/repo_build.log"
@@ -82,7 +99,7 @@ package_exists() {
 # Function to check if package is installed on system
 package_installed() {
     local pkg_name="$1"
-    if pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Qi "$pkg_name" &>/dev/null; then
+    if pacman --config "$TEMP_PACMAN_CONF" -Qi "$pkg_name" &>/dev/null; then
         return 0
     fi
     return 1
@@ -102,14 +119,14 @@ install_from_local_repo() {
     fi
     
     echo "  Installing $pkg_name from local repo to satisfy dependencies..."
-    if ! echo "$SUDO_PASS" | sudo -S pacman -U --noconfirm --config "$SCRIPT_DIR/iso/pacman.conf" "$pkg_file" >> "$LOG_FILE" 2>&1; then
+    if ! echo "$SUDO_PASS" | sudo -S pacman -U --noconfirm --config "$TEMP_PACMAN_CONF" "$pkg_file" >> "$LOG_FILE" 2>&1; then
         echo "  WARNING: Failed to install $pkg_name locally. Subsequent builds might fail if they depend on this."
         return 1
     fi
     
     # Sync pacman database to ensure package is properly registered
     echo "  Syncing pacman database after installing $pkg_name..."
-    if ! echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm --config "$SCRIPT_DIR/iso/pacman.conf" >> "$LOG_FILE" 2>&1; then
+    if ! echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm --config "$TEMP_PACMAN_CONF" >> "$LOG_FILE" 2>&1; then
         echo "  WARNING: Failed to sync pacman database after installing $pkg_name."
     fi
     
@@ -174,7 +191,7 @@ while IFS= read -r package; do
     done
 
     # Check if package exists in official repos
-    if [ "$FORCE_AUR" = false ] && pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Si "$package" &>/dev/null; then
+    if [ "$FORCE_AUR" = false ] && pacman --config "$TEMP_PACMAN_CONF" -Si "$package" &>/dev/null; then
         echo "  Downloading from official repos..."
         echo "------------------------------------------------" >> "$LOG_FILE"
         echo "Downloading $package" >> "$LOG_FILE"
@@ -182,7 +199,7 @@ while IFS= read -r package; do
         # Clean up potential partials or existing root-owned files that might block writing
         echo "$SUDO_PASS" | sudo -S rm -f "$package"*.part "$package"*.pkg.tar.zst
         
-        if ! echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
+        if ! echo "$SUDO_PASS" | sudo -S pacman --config "$TEMP_PACMAN_CONF" -Sw --noconfirm --cachedir . "$package" >> "$LOG_FILE" 2>&1; then
              echo "  Failed to download $package. See log."
              FAILED_PACKAGES+=("$package")
         else
@@ -278,11 +295,6 @@ while IFS= read -r package; do
                     repo-add local_repo.db.tar.gz "$pkg" >> "$LOG_FILE" 2>&1
                 done
                 
-                # Sync pacman to pick up the new local package
-                if ! echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sy --noconfirm >> "$LOG_FILE" 2>&1; then
-                     echo "  WARNING: Failed to sync pacman database after adding $package."
-                fi
-
                 # Install the package locally so makepkg can find it as a dependency
                 echo "  Installing $package locally to satisfy dependencies..."
                 if ! echo "$SUDO_PASS" | sudo -S pacman -U --noconfirm "${built_pkgs[@]}" >> "$LOG_FILE" 2>&1; then
@@ -306,8 +318,9 @@ while IFS= read -r package; do
     fi
 done < "$TEMP_PACKAGES_FILE"
 
-# Clean up temporary file
+# Clean up temporary files
 rm -f "$TEMP_PACKAGES_FILE"
+rm -f "$TEMP_PACMAN_CONF"
 
 # Add the downloaded packages to the local repository
 if [ "$NEWLY_BUILT" = true ]; then
