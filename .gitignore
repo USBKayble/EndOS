@@ -1,5 +1,5 @@
 # Ignore large binary files and extracted repos
-dots-hyprland-main
+dots-hyprland
 iso/local_repo
 repo_build.log
 work

@@ -40,12 +40,16 @@ fi
 cd "$LOCAL_REPO_DIR" || exit 1
 
 # Initialize a local repository
-echo "Initializing local repository..."
-# Check if db exists, if not maybe touch it or wait until we have packages?
-# repo-add needs packages usually. We'll skip empty init if it's problematic, 
-# but for now preserving original intent but handling potential failure if valid.
-if [ ! -f "local_repo.db.tar.gz" ]; then
-    echo "No existing DB found. Will be created when packages are added."
+# Rebuild local repository database to remove ghost packages and ensure consistency
+echo "Rebuilding local repository database..."
+rm -f local_repo.db* local_repo.files*
+
+# Add all existing packages to the new database
+if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
+    echo "Adding existing packages to database..."
+    repo-add local_repo.db.tar.gz *.pkg.tar.zst
+else
+    echo "No existing packages found. Database will be created on first add."
 fi
 
 # Sync databases using the ISO config to ensure multilib/chaotic-aur are up to date
@@ -70,8 +74,70 @@ package_exists() {
     return 1
 }
 
+# Function to check if package is installed on system
+package_installed() {
+    local pkg_name="$1"
+    if pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Qi "$pkg_name" &>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# Function to install package from local repo to system
+install_from_local_repo() {
+    local pkg_name="$1"
+    local pkg_file
+    
+    # Find the exact package file
+    pkg_file=$(find . -maxdepth 1 -name "${pkg_name}-[0-9]*.pkg.tar.zst" -print -quit)
+    
+    if [ -z "$pkg_file" ]; then
+        echo "  ERROR: Could not find built package for $pkg_name"
+        return 1
+    fi
+    
+    echo "  Installing $pkg_name from local repo to satisfy dependencies..."
+    if ! echo "$SUDO_PASS" | sudo -S pacman -U --noconfirm --config "$SCRIPT_DIR/iso/pacman.conf" "$pkg_file" >> "$LOG_FILE" 2>&1; then
+        echo "  WARNING: Failed to install $pkg_name locally. Subsequent builds might fail if they depend on this."
+        return 1
+    fi
+    
+    # Sync pacman database to ensure package is properly registered
+    echo "  Syncing pacman database after installing $pkg_name..."
+    if ! echo "$SUDO_PASS" | sudo -S pacman -Sy --noconfirm --config "$SCRIPT_DIR/iso/pacman.conf" >> "$LOG_FILE" 2>&1; then
+        echo "  WARNING: Failed to sync pacman database after installing $pkg_name."
+    fi
+    
+    echo "  Successfully installed $pkg_name"
+    return 0
+}
+
 echo "Scanning for missing packages..."
 
+# Create a temporary file with dependency ordering
+TEMP_PACKAGES_FILE=$(mktemp)
+echo "Creating dependency-ordered package list..."
+
+# Create dependency tracking
+MILLENNIUM_DEPS=("lib32-python311-bin" "steam")
+
+# Add millennium dependencies first, then millennium
+while IFS= read -r package; do
+    # Skip empty lines and comments
+    [[ -z "$package" || "$package" =~ ^# ]] && continue
+    
+    # If this is millennium, add its dependencies first
+    if [ "$package" == "millennium" ]; then
+        for dep in "${MILLENNIUM_DEPS[@]}"; do
+            echo "$dep" >> "$TEMP_PACKAGES_FILE"
+        done
+    fi
+    
+    # Add package itself
+    echo "$package" >> "$TEMP_PACKAGES_FILE"
+done < "$PACKAGES_FILE"
+
+# Process packages in dependency order
 while IFS= read -r package; do
     # Skip empty lines and comments
     [[ -z "$package" || "$package" =~ ^# ]] && continue
@@ -82,9 +148,28 @@ while IFS= read -r package; do
     fi
 
     echo "Processing package: $package"
+    
+    # Special handling for millennium dependencies - install if built but not installed
+    for dep in "${MILLENNIUM_DEPS[@]}"; do
+        if [ "$package" == "millennium" ] && package_exists "$dep" && ! package_installed "$dep"; then
+            echo "  NOTE: Installing dependency $dep before building $package"
+            install_from_local_repo "$dep"
+        fi
+    done
+
+    # Force AUR build for certain packages that are only available in AUR
+    FORCE_AUR_PACKAGES=("google-breakpad")
+    FORCE_AUR=false
+    for force_pkg in "${FORCE_AUR_PACKAGES[@]}"; do
+        if [ "$package" == "$force_pkg" ]; then
+            FORCE_AUR=true
+            echo "  NOTE: Forcing AUR build for $package (not available in official repos)"
+            break
+        fi
+    done
 
     # Check if package exists in official repos
-    if pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Si "$package" &>/dev/null; then
+    if [ "$FORCE_AUR" = false ] && pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Si "$package" &>/dev/null; then
         echo "  Downloading from official repos..."
         echo "------------------------------------------------" >> "$LOG_FILE"
         echo "Downloading $package" >> "$LOG_FILE"
@@ -114,12 +199,19 @@ while IFS= read -r package; do
         if [ "$package" == "otf-space-grotesk" ]; then
             AUR_PKG_NAME="38c3-styles"
             echo "  NOTE: Mapped $package to AUR package $AUR_PKG_NAME"
+        elif [ "$package" == "ttf-material-symbols-variable-git" ]; then
+            AUR_PKG_NAME="material-symbols-git"
+            echo "  NOTE: Mapped $package to AUR package $AUR_PKG_NAME"
+        elif [ "$package" == "qt6-avif-image-plugin" ]; then
+            AUR_PKG_NAME="qt5-avif-image-plugin"
+            echo "  NOTE: Mapped $package to AUR package $AUR_PKG_NAME (AUR uses qt5-avif-image-plugin name)"
         fi
 
         # Remove any existing directory just in case
         rm -rf "$AUR_PKG_NAME"
         
-        if git clone "https://aur.archlinux.org/${AUR_PKG_NAME}.git"; then
+        # Try git clone with better error handling
+        if git clone "https://aur.archlinux.org/${AUR_PKG_NAME}.git" 2>> "$LOG_FILE"; then
             echo "  DEBUG: git clone completed." >> "$LOG_FILE"
             
             BUILDPKG_DIR="$AUR_PKG_NAME"
@@ -146,7 +238,8 @@ while IFS= read -r package; do
             # Additional check for PKGBUILD presence
             if [ ! -f "PKGBUILD" ]; then
                 echo "  ERROR: PKGBUILD missing after git clone." >> "$LOG_FILE"
-                echo "  ERROR: PKGBUILD missing in $BUILDPKG_DIR"
+                echo "  ERROR: PKGBUILD missing in $BUILDPKG_DIR - AUR package may be invalid or renamed"
+                echo "  TIP: Check https://aur.archlinux.org/packages/${AUR_PKG_NAME} for package status"
                 cd ..
                 FAILED_PACKAGES+=("$package")
                 continue
@@ -166,10 +259,31 @@ while IFS= read -r package; do
             # -s: install deps, -c: clean, --noconfirm
             if makepkg -sc --noconfirm >> "$LOG_FILE" 2>&1; then
                 # Move built package to repo dir
+                echo "  Successfully built $package"
+                
+                # Capture generated package files
+                built_pkgs=( *.pkg.tar.zst )
                 mv *.pkg.tar.zst ../
                 cd ..
                 rm -rf "$BUILDPKG_DIR"
-                echo "  Successfully built $package"
+                
+                # Immediately add to repo and sync so dependencies are available for next builds
+                echo "  Adding $package to local_repo database and syncing..."
+                for pkg in "${built_pkgs[@]}"; do
+                    repo-add local_repo.db.tar.gz "$pkg" >> "$LOG_FILE" 2>&1
+                done
+                
+                # Sync pacman to pick up the new local package
+                if ! echo "$SUDO_PASS" | sudo -S pacman --config "$SCRIPT_DIR/iso/pacman.conf" -Sy --noconfirm >> "$LOG_FILE" 2>&1; then
+                     echo "  WARNING: Failed to sync pacman database after adding $package."
+                fi
+
+                # Install the package locally so makepkg can find it as a dependency
+                echo "  Installing $package locally to satisfy dependencies..."
+                if ! echo "$SUDO_PASS" | sudo -S pacman -U --noconfirm "${built_pkgs[@]}" >> "$LOG_FILE" 2>&1; then
+                    echo "  WARNING: Failed to install $package locally. Subsequent builds might fail if they depend on this."
+                fi
+                
                 NEWLY_BUILT=true
             else
                 echo "  Failed to build $package. See log."
@@ -179,10 +293,16 @@ while IFS= read -r package; do
             fi
         else
             echo "  Failed to fetch $package from AUR. See log."
+            echo "  DEBUG: Git clone failed for ${AUR_PKG_NAME}" >> "$LOG_FILE"
+            echo "  TIP: This could be a network issue or the package may not exist in AUR"
+            echo "  TIP: Check https://aur.archlinux.org/packages/${AUR_PKG_NAME} for package status"
             FAILED_PACKAGES+=("$package")
         fi
     fi
-done < "$PACKAGES_FILE"
+done < "$TEMP_PACKAGES_FILE"
+
+# Clean up temporary file
+rm -f "$TEMP_PACKAGES_FILE"
 
 # Add the downloaded packages to the local repository
 if [ "$NEWLY_BUILT" = true ]; then

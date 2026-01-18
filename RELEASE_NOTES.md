@@ -1,11 +1,19 @@
 # EndOS-Live-Beta
 
-<!---
-NOTE: This file is automatically read by the release workflow.
+<!--- NOTE: This file is automatically read by the release workflow.
 The first line (Title) is used to generate the ISO filename.
 Do NOT remove the first line.
 -->
+
+## Changelog Overview
+
+This release introduces significant architectural changes focused on improving system compatibility, security, and maintainability. The primary changes include migrating to a liveuser model for Hyprland compatibility and moving dotfile configuration to a post-install script for better flexibility.
+
 ## Changes
+
+### System Architecture
+- **Liveuser Migration**: Transitioned to a liveuser model for improved compatibility and security on Hyprland environments
+- **Dotfile Management**: Moved all dotfile setup operations to a post-install script for cleaner architecture and easier maintenance
 - **Fixed Root Persistence**: The root user now has a fully static home directory (`.config`, `.local`), solving the "no files" issue.
 - **Refactored Build System**: Removed dynamic package cloning and dotfile copying during the build.
 - **Improved Package Management**: Packages are now sourced directly from `packages.x86_64`.
