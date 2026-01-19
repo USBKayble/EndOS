@@ -1,0 +1,5 @@
+# EndOS service presets
+enable greetd.service
+enable bluetooth.service
+enable NetworkManager.service
+enable sshd.service

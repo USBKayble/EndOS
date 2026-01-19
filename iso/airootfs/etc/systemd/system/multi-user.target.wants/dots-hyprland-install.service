@@ -1,0 +1,17 @@
+[Unit]
+Description=Automated dots-hyprland installation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/post-install-dots.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+# Ensure it only runs once
+ConditionPathExists=!/home/liveuser/.config/dots-hyprland-installed
+
+[Install]
+WantedBy=multi-user.target

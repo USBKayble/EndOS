@@ -1,0 +1,148 @@
+name: Build EndOS ISO
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'iso/**'
+      - 'build.sh'
+      - '.github/workflows/build_iso.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decision.outputs.should_build }}
+      commit_sha: ${{ steps.get_sha.outputs.sha }}
+    steps:
+      - name: Get latest dots-hyprland commit
+        id: get_sha
+        run: |
+          SHA=$(curl -s "https://api.github.com/repos/end-4/dots-hyprland/commits/main" | jq -r .sha)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+      
+      - name: Check cache for commit
+        id: check_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: dots_version.txt
+          key: dots-hyprland-${{ steps.get_sha.outputs.sha }}
+          lookup-only: true
+      
+      - name: Decide whether to build
+        id: decision
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" && "${{ steps.check_cache.outputs.cache-hit }}" == "true" ]]; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: check-updates
+    if: needs.check-updates.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Arch Linux environment
+        run: |
+          # Initialize pacman keyring
+          pacman-key --init
+          pacman-key --populate archlinux
+
+          # Update system and install base dependencies
+          pacman -Syu --noconfirm
+
+          # Install build essentials
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            archiso \
+            rsync \
+            python \
+            python-pip \
+            curl \
+            wget \
+            sudo
+
+          # Enable multilib repository
+          echo "" >> /etc/pacman.conf
+          echo "[multilib]" >> /etc/pacman.conf
+          echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+          pacman -Sy
+
+      - name: Create build user
+        run: |
+          # Create a non-root user for makepkg (AUR builds)
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R builder:builder .
+
+      - name: Build ISO
+        run: |
+          # Run the build script as the builder user
+          # Ensure strict permissions for working directories
+          chown -R builder:builder .
+          sudo -u builder bash build.sh
+        env:
+          HOME: /home/builder
+
+      - name: Split ISO for Release
+        run: |
+          cd out
+          ISO_FILE=$(ls *.iso | head -n 1)
+          SHA256=$(sha256sum "$ISO_FILE" | cut -d ' ' -f 1)
+          echo "ISO_SHA256=$SHA256" >> $GITHUB_ENV
+          
+          echo "Splitting $ISO_FILE into 2GB chunks..."
+          split -b 2000M -d "$ISO_FILE" "${ISO_FILE}.part"
+          rm "$ISO_FILE"
+          ls -lh
+
+      - name: Generate Release Tag
+        id: tag
+        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ steps.tag.outputs.date }}
+          name: EndOS Build ${{ steps.tag.outputs.date }}
+          body: |
+            Automated build of EndOS.
+            
+            **SHA256 Checksum**: `${{ env.ISO_SHA256 }}`
+            
+            *Note: The ISO has been split into parts to satisfy GitHub file size limits. Join them before using:*
+            ```bash
+            cat *.part* > EndOS.iso
+            ```
+          files: |
+            out/*.part*
+            out/build.log
+
+      - name: Prepare cache file
+        if: success()
+        run: touch dots_version.txt
+
+      - name: Save build cache
+        uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: dots_version.txt
+          key: dots-hyprland-${{ needs.check-updates.outputs.commit_sha }}
+

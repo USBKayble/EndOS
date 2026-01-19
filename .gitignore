@@ -1,6 +1,15 @@
 # Ignore large binary files and extracted repos
 dots-hyprland
-iso/local_repo
+local_repo
 repo_build.log
 work
 out
+.pip_cache
+iso/airootfs/etc/skel/dots-hyprland
+iso/airootfs/home/liveuser/dots-hyprland
+iso/airootfs/root/dots-hyprland
+iso/airootfs/home/liveuser/.config
+iso/airootfs/home/liveuser/.local
+iso/airootfs/etc/skel/.config
+iso/airootfs/etc/skel/.local
+iso/airootfs/var/
