@@ -320,19 +320,15 @@ fi
 
 echo "--> Caching Python wheels..."
 WHEELS_DIR="${ISO_DIR}/airootfs/var/cache/wheels"
-UV_CACHE="${SCRIPT_DIR}/.uv_cache"
-mkdir -p "$WHEELS_DIR" "$UV_CACHE"
+PIP_CACHE="${SCRIPT_DIR}/.pip_cache"
+mkdir -p "$WHEELS_DIR" "$PIP_CACHE"
 
-# Use uv to download wheels (same tool used in the service for better compatibility)
-# First, try to download only binary wheels
-echo "    Downloading binary wheels with uv..."
-if ! UV_CACHE_DIR="$UV_CACHE" uv pip download --only-binary=:all: -r "$REQ_FILE" -d "$WHEELS_DIR" 2>/dev/null; then
-    echo "    Some packages don't have binary wheels, building from source..."
-    # If that fails, allow building wheels from source on the build machine
-    UV_CACHE_DIR="$UV_CACHE" uv pip download -r "$REQ_FILE" -d "$WHEELS_DIR" || {
-        echo "ERROR: Failed to download Python wheels. Aborting."
-        exit 1
-    }
+# Build wheels locally (includes downloading and building from source if needed)
+# This ensures all packages are available as .whl files for offline installation
+echo "    Building/downloading wheels with pip..."
+if ! pip wheel --cache-dir "$PIP_CACHE" -r "$REQ_FILE" -w "$WHEELS_DIR"; then
+    echo "ERROR: Failed to build Python wheels. Aborting."
+    exit 1
 fi
 
 # Verify all required packages have been downloaded
