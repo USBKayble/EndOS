@@ -320,13 +320,19 @@ fi
 
 echo "--> Caching Python wheels..."
 WHEELS_DIR="${ISO_DIR}/airootfs/var/cache/wheels"
-PIP_CACHE="${SCRIPT_DIR}/.pip_cache"
-mkdir -p "$WHEELS_DIR" "$PIP_CACHE"
+UV_CACHE="${SCRIPT_DIR}/.uv_cache"
+mkdir -p "$WHEELS_DIR" "$UV_CACHE"
 
-# Download wheels - fail on error
-if ! pip download --cache-dir "$PIP_CACHE" -r "$REQ_FILE" -d "$WHEELS_DIR"; then
-    echo "ERROR: Failed to download Python wheels. Aborting."
-    exit 1
+# Use uv to download wheels (same tool used in the service for better compatibility)
+# First, try to download only binary wheels
+echo "    Downloading binary wheels with uv..."
+if ! UV_CACHE_DIR="$UV_CACHE" uv pip download --only-binary=:all: -r "$REQ_FILE" -d "$WHEELS_DIR" 2>/dev/null; then
+    echo "    Some packages don't have binary wheels, building from source..."
+    # If that fails, allow building wheels from source on the build machine
+    UV_CACHE_DIR="$UV_CACHE" uv pip download -r "$REQ_FILE" -d "$WHEELS_DIR" || {
+        echo "ERROR: Failed to download Python wheels. Aborting."
+        exit 1
+    }
 fi
 
 # Verify all required packages have been downloaded
@@ -359,8 +365,8 @@ echo "    All Python wheels verified."
 # Step 7: Post-Install Config
 echo "--> Configuring post-install hooks..."
 
-# Function to configure .zlogin
-configure_zlogin() {
+# Function to configure .zprofile (more reliable for auto-login than .zlogin)
+configure_zprofile() {
     local target_file="$1"
     local target_dir=$(dirname "$target_file")
     
@@ -380,8 +386,8 @@ configure_zlogin() {
     fi
 }
 
-configure_zlogin "${ISO_DIR}/airootfs/home/liveuser/.zlogin"
-configure_zlogin "${ISO_DIR}/airootfs/etc/skel/.zlogin"
+configure_zprofile "${ISO_DIR}/airootfs/home/liveuser/.zprofile"
+configure_zprofile "${ISO_DIR}/airootfs/etc/skel/.zprofile"
 
 # Step 8: Build
 echo "--> Building ISO..."

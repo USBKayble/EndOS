@@ -40,4 +40,5 @@ file_permissions=(
   ["/etc/skel/.local"]="0:0:755"
   ["/etc/sudoers.d/liveuser"]="0:0:440"
   ["/etc/systemd/system/setup-quickshell-venv.service"]="0:0:644"
+  ["/etc/systemd/system/configure-liveuser-groups.service"]="0:0:644"
 )

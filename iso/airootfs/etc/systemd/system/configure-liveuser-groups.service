@@ -1,0 +1,12 @@
+[Unit]
+Description=Configure liveuser system groups
+Before=getty@tty1.service
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/usermod -aG wheel,systemd-journal liveuser
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
