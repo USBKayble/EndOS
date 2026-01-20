@@ -19,4 +19,4 @@ iso/airootfs/etc/skel/.local
 iso/airootfs/var/
 iso/packages.x86_64
 iso/requirements.txt
-
+build.log
