@@ -219,7 +219,16 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     echo "    Updating local package cache..."
     
     # Update pacman.conf with correct local_repo path
+    echo "    Setting local_repo path to: ${SCRIPT_DIR}/local_repo"
     sed -i "s|Server = file://\$PWD/local_repo|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
+    
+    # Verify the replacement worked
+    if grep -q "Server = file://\$PWD/local_repo" "$ISO_DIR/pacman.conf"; then
+        echo "    ERROR: Failed to replace \$PWD in pacman.conf"
+        exit 1
+    fi
+    echo "    Verified pacman.conf local_repo path:"
+    grep "Server = file://" "$ISO_DIR/pacman.conf" | grep local_repo
     
     # Create empty local_repo database if it doesn't exist
     if [ ! -f "$HOST_REPO_DIR/local_repo.db.tar.gz" ]; then
