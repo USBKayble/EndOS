@@ -5,6 +5,10 @@ repo_build.log
 work
 out
 .pip_cache
+.uv_cache
+build.log
+
+# Ignore generated ISO files
 iso/airootfs/etc/skel/dots-hyprland
 iso/airootfs/home/liveuser/dots-hyprland
 iso/airootfs/root/dots-hyprland
@@ -13,3 +17,6 @@ iso/airootfs/home/liveuser/.local
 iso/airootfs/etc/skel/.config
 iso/airootfs/etc/skel/.local
 iso/airootfs/var/
+iso/packages.x86_64
+iso/requirements.txt
+

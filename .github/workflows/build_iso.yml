@@ -77,7 +77,11 @@ jobs:
             python-pip \
             curl \
             wget \
-            sudo
+            sudo \
+            meson \
+            ninja \
+            patchelf \
+            python-build
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf
