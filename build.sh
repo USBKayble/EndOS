@@ -239,19 +239,17 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     PACMAN_LOG=$(mktemp)
     sudo pacman -Syw --config "$ISO_DIR/pacman.conf" --cachedir "$HOST_REPO_DIR" --noconfirm --dbpath "$TEMP_DB_PATH" - < "$PKG_LIST_FILE" 2> "$PACMAN_LOG" || true
     
+    
     # Identify AUR packages
     AUR_PKGS=$(grep "error: target not found:" "$PACMAN_LOG" | awk '{print $NF}' | sort -u)
     rm "$PACMAN_LOG"
     
-    # Report AUR packages found
     if [ -n "$AUR_PKGS" ]; then
         echo "    ========================================"
         echo "    Detected AUR packages ($(echo "$AUR_PKGS" | wc -w) total):"
         echo "$AUR_PKGS" | tr ' ' '\n' | sed 's/^/      - /'
         echo "    ========================================"
-    
-    if [ -n "$AUR_PKGS" ]; then
-        echo "    Detected AUR packages. Attempting to build..."
+        echo "    Attempting to build..."
         # Ensure base-devel and common build dependencies are present
         sudo pacman -S --needed --noconfirm base-devel fontforge python-fonttools
         
