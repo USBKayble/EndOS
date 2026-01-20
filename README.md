@@ -1,56 +1,188 @@
 # EndOS
 
-**EndOS** is a specialized Arch Linux setup script designed to transform a fresh Arch install into a fully-configured, high-performance Hyprland environment. It automates the tedious parts of post-installation, from driver detection to dotfiles deployment.
+**EndOS** is a custom Arch Linux live ISO featuring the beautiful [end-4 Hyprland dotfiles](https://github.com/end-4/dots-hyprland). It provides a fully-configured, modern Wayland desktop environment with Material You theming, ready to use out of the box.
 
-> **Roadmap**: This project is the precursor to a full custom Arch ISO installer.
+> **Live ISO**: Boot directly into a stunning Hyprland desktop with quickshell, no installation required. Perfect for testing or daily use.
 
-## Features
+## ✨ Features
 
-*   **Automated Hardware Detection**:
-    *   **GPU**: Automatically detects Nvidia, AMD, or Intel and installs the correct drivers (including DKMS + Headers).
-    *   **Bootloader**: Detects GRUB or systemd-boot to correctly configure the boot splash (Plymouth).
-*   **Robust Automation**:
-    *   **Sudo Keep-alive**: Asks for your password **once** at the start and keeps sudo active for the entire run.
-    *   **Conflict Resolution**: Automatically detects and recursively removes conflicting packages (e.g., legacy `jack2` vs `pipewire-jack`) to ensure a smooth install.
-    *   **Mirror Optimization**: Uses `reflector` to pick the fastest mirrors before downloading.
-*   **The End-4 Experience**: Automatically deploys the End-4 Hyprland dotfiles.
-*   **Essential Stack**:
-    *   **Audio**: Full Pipewire/Wireplumber stack.
-    *   **Bluetooth**: Bluez stack enabled out of the box.
-    *   **SSH**: OpenSSH installed and enabled for remote access.
-*   **Offline Capable**:
-    *   **Pre-seeded Dotfiles**: The Live ISO includes the dotfiles, so you don't need internet to install.
-    *   **Drivers**: Includes Mesa, Vulkan, and proprietary firmware for broad hardware support offline.
+### 🎨 Beautiful Desktop Environment
+- **Hyprland** - Modern Wayland compositor
+- **Quickshell** - Dynamic, Python-powered widgets
+- **Material You** - Adaptive color theming
+- **end-4 dotfiles** - Professionally crafted configuration
 
-## How to Use
+### 🚀 Ready to Use
+- **Auto-login** - Boots directly to desktop
+- **Offline capable** - All packages and Python dependencies bundled
+- **Pre-configured** - No setup required, works immediately
+- **Hardware support** - Includes drivers for AMD, Intel, NVIDIA, and VMs
 
-## How to Use
+### 📦 Complete Package Set
+- **Desktop**: Hyprland, quickshell, fuzzel, waybar alternatives
+- **Audio**: Pipewire/Wireplumber stack
+- **Bluetooth**: Bluez with GUI controls
+- **Applications**: Dolphin, Kitty, Firefox, and more
+- **Development**: Full base-devel, Python, Git
 
-### Method 1: Live ISO (Recommended)
-1.  Boot the **EndOS ISO**.
-2.  Wait for the auto-login and dotfiles setup.
-3.  Open the application launcher (Super+A) and search for **"Install EndOS"**.
-4.  Follow the on-screen instructions.
+## 🚀 Quick Start
 
-### Method 2: Manual Script (Existing Arch Install)
+### Download the ISO
 
-1.  **Install Arch Linux** (using `archinstall` or manually).
-2.  **Clone this repository**:
-    ```bash
-    git clone https://github.com/USBKayble/EndOS.git
-    cd EndOS
-    ```
-3.  **Run the setup script**:
-    ```bash
-    chmod +x setup_arch.sh
-    ./setup_arch.sh
-    ```
-    *Note: Do not run as root directly; the script will ask for necessary permissions.*
+Download the latest release from [GitHub Releases](https://github.com/USBKayble/EndOS/releases).
 
-## Future Plans
+**Combine split parts:**
+```bash
+# Linux/macOS
+cat endos-part* > endos-YYYY.MM.DD-x86_64.iso
 
-The ultimate goal of EndOS is to evolve into a standalone **Arch Linux ISO**. This will allow users to boot directly into a live environment and install the fully customized EndOS experience without needing to install vanilla Arch first.
+# Windows (PowerShell)
+Get-Content endos-part* -Raw | Set-Content -Path "endos-YYYY.MM.DD-x86_64.iso" -Encoding Byte
+```
 
-## Credits
+**Verify checksum:**
+```bash
+sha256sum endos-YYYY.MM.DD-x86_64.iso
+# Compare with checksum in release notes
+```
 
-*   **Dotfiles**: The stunning Hyprland configuration is provided by **[end-4/dots-hyprland](https://github.com/end-4/dots-hyprland)**. Used with permission/credit to the original creator.
+### Boot the ISO
+
+**VirtualBox:**
+1. Create new VM (Type: Linux, Version: Arch Linux 64-bit)
+2. Allocate 4GB+ RAM, 2+ CPUs
+3. Settings → Display → Video Memory: 128MB, Enable 3D Acceleration
+4. Attach ISO and boot
+
+**VMware Workstation:**
+1. Create new VM, select ISO
+2. Allocate 4GB+ RAM, 2+ CPUs
+3. Enable 3D graphics acceleration
+4. Boot
+
+**Physical Hardware:**
+1. Flash ISO to USB: `dd if=endos.iso of=/dev/sdX bs=4M status=progress`
+2. Boot from USB
+3. Enjoy!
+
+### Using the Live Environment
+
+- **Auto-login**: System boots directly to Hyprland desktop
+- **SSH Access**: `ssh liveuser@<ip>` (no password required)
+- **Explore**: All features work immediately, no installation needed
+
+## 🛠️ Building the ISO Locally
+
+### Prerequisites
+
+- Arch Linux (or Arch-based distro)
+- `archiso` package installed
+- `base-devel` for building AUR packages
+- ~20GB free disk space
+
+### Build Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/USBKayble/EndOS.git
+   cd EndOS
+   ```
+
+2. **Run the build script:**
+   ```bash
+   ./build.sh
+   ```
+
+   The script will:
+   - Clone the latest dots-hyprland repository
+   - Extract and merge package lists
+   - Download/build all packages (including AUR)
+   - Build Python wheels for quickshell
+   - Generate the ISO in `out/`
+
+3. **Find your ISO:**
+   ```bash
+   ls -lh out/endos-*.iso
+   ```
+
+### Build Process Details
+
+- **Package Management**: Automatically builds AUR packages and creates a local repository
+- **Python Dependencies**: Pre-compiles all wheels for offline installation
+- **Dotfiles**: Integrates latest end-4/dots-hyprland configuration
+- **Build Time**: ~30-60 minutes depending on your system and network
+
+See [iso/README.md](iso/README.md) for detailed ISO structure documentation.
+
+## 📁 Project Structure
+
+```
+EndOS/
+├── build.sh              # Main build script
+├── iso/                  # ISO configuration
+│   ├── airootfs/        # Live system root filesystem
+│   ├── pacman.conf      # Package manager configuration
+│   ├── profiledef.sh    # ISO profile definition
+│   └── README.md        # ISO structure documentation
+├── local_repo/          # Built AUR packages (generated)
+├── out/                 # Built ISO output (generated)
+└── work/                # Build working directory (generated)
+```
+
+## 🎯 Use Cases
+
+- **Testing Hyprland** - Try Hyprland without installing
+- **Rescue System** - Arch-based live environment with GUI
+- **Development** - Pre-configured Wayland development environment
+- **Daily Driver** - Use as a persistent live USB system
+- **Showcase** - Demonstrate modern Linux desktop capabilities
+
+## 🔧 Customization
+
+The ISO is built from modular components:
+
+- **Base packages**: `iso/base.packages.x86_64`
+- **User packages**: `iso/user.packages.x86_64`
+- **Dotfiles**: Automatically pulled from end-4/dots-hyprland
+- **Services**: Custom systemd services in `iso/airootfs/etc/systemd/system/`
+
+Modify these files and rebuild to create your own customized ISO.
+
+## 🤝 Credits
+
+### Dotfiles
+This project uses the absolutely stunning **[end-4/dots-hyprland](https://github.com/end-4/dots-hyprland)** configuration.
+
+**Huge thanks to [end-4](https://github.com/end-4)** for creating and maintaining this incredible Hyprland setup. The dotfiles provide:
+- Beautiful Material You theming
+- Quickshell widgets and panels
+- Extensive customization options
+- Professional-grade configuration
+
+Please visit the [original repository](https://github.com/end-4/dots-hyprland) to:
+- ⭐ Star the project
+- 📖 Read the full documentation
+- 🐛 Report dotfiles-specific issues
+- 💝 Support the creator
+
+### Tools & Technologies
+- **Arch Linux** - The base distribution
+- **archiso** - ISO building framework
+- **Hyprland** - Wayland compositor
+- **Quickshell** - Widget framework
+
+## 📝 License
+
+This project (EndOS build scripts and ISO configuration) is released under the MIT License.
+
+**Note**: The end-4/dots-hyprland configuration has its own license. Please refer to the [original repository](https://github.com/end-4/dots-hyprland) for dotfiles licensing information.
+
+## 🐛 Issues & Support
+
+- **ISO Build Issues**: [Open an issue](https://github.com/USBKayble/EndOS/issues)
+- **Dotfiles Issues**: Report to [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland/issues)
+- **Arch Linux Issues**: Consult [Arch Wiki](https://wiki.archlinux.org/)
+
+## 🚀 Automated Builds
+
+The ISO is automatically built daily via GitHub Actions when the dots-hyprland repository is updated. Check [Releases](https://github.com/USBKayble/EndOS/releases) for the latest builds.

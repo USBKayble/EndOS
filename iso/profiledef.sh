@@ -41,4 +41,5 @@ file_permissions=(
   ["/etc/sudoers.d/liveuser"]="0:0:440"
   ["/etc/systemd/system/setup-quickshell-venv.service"]="0:0:644"
   ["/etc/systemd/system/configure-liveuser-groups.service"]="0:0:644"
+  ["/usr/local/bin/endos-debug"]="0:0:755"
 )

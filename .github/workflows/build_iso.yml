@@ -105,6 +105,14 @@ jobs:
         env:
           HOME: /home/builder
 
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.run_number }}
+          path: build.log
+          retention-days: 7
+
       - name: Split ISO for Release
         run: |
           cd out

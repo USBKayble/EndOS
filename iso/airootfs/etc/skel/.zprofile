@@ -1,12 +1,3 @@
-#!/usr/bin/env bash
-
-export XDG_CONFIG_HOME="${HOME}/.config"
-export XDG_DATA_HOME="${HOME}/.local/share"
-export XDG_STATE_HOME="${HOME}/.local/state"
-
-export DOTFILES="${HOME}/dots-hyprland"
-
-export ZDOTDIR="${XDG_CONFIG_HOME}/zsh"
 
 # Automated EndOS Install Logic
 if [ ! -f ~/.config/dots-hyprland-installed ]; then

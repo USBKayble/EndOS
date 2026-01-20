@@ -243,6 +243,13 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     AUR_PKGS=$(grep "error: target not found:" "$PACMAN_LOG" | awk '{print $NF}' | sort -u)
     rm "$PACMAN_LOG"
     
+    # Report AUR packages found
+    if [ -n "$AUR_PKGS" ]; then
+        echo "    ========================================"
+        echo "    Detected AUR packages ($(echo "$AUR_PKGS" | wc -w) total):"
+        echo "$AUR_PKGS" | tr ' ' '\n' | sed 's/^/      - /'
+        echo "    ========================================"
+    
     if [ -n "$AUR_PKGS" ]; then
         echo "    Detected AUR packages. Attempting to build..."
         # Ensure base-devel and common build dependencies are present
@@ -274,7 +281,9 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 continue
             fi
             
-            echo "      - Building $pkg from AUR using yay..."
+            echo "      ========================================"
+            echo "      Building AUR package: $pkg"
+            echo "      ========================================"
             (
                 # Use a temporary directory for the yay build process
                 BUILD_SUBDIR=$(mktemp -d)
