@@ -217,6 +217,10 @@ fi
 
 if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null | grep '\.pkg\.tar\.zst$')" ]; then
     echo "    Updating local package cache..."
+    
+    # Update pacman.conf with correct local_repo path
+    sed -i "s|Server = file://\$PWD/local_repo|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
+    
     TEMP_DB_PATH=$(mktemp -d)
     chmod 777 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
