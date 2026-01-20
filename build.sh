@@ -437,9 +437,8 @@ echo "--> Building ISO..."
 # Ensure output dir exists
 mkdir -p "$OUT_DIR"
 
-# Ensure pacman.conf has correct local_repo path for mkarchiso
-echo "    Updating pacman.conf for mkarchiso..."
-sed -i "s|Server = file://\$PWD/local_repo|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
+# Update BUILDDIR placeholder in pacman-build.conf
+sed -i "s|file://BUILDDIR|file://${SCRIPT_DIR}|g" "$ISO_DIR/pacman-build.conf"
 
 # Pre-populate pacman cache AND regenerate repo database
 echo "    Setting up local packages for build..."
@@ -455,6 +454,7 @@ if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
     echo "    $(ls "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l) packages ready"
 fi
 
-sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$ISO_DIR"
+# Use pacman-build.conf for mkarchiso (has local_repo enabled)
+sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" -C "$ISO_DIR/pacman-build.conf" "$ISO_DIR"
 
 echo "=== Build Complete ==="

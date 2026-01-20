@@ -123,7 +123,6 @@ Collecting wheel==0.45.1 (from -r iso/requirements.txt (line 24))
     All Python wheels verified.
 --> Configuring post-install hooks...
 --> Building ISO...
-    Updating pacman.conf for mkarchiso...
     Setting up local packages for build...
     Regenerating local repo database...
     35 packages ready
@@ -135,7 +134,7 @@ Collecting wheel==0.45.1 (from -r iso/requirements.txt (line 24))
 [mkarchiso] INFO:              Architecture:   x86_64
 [mkarchiso] INFO:         Working directory:   /home/kaleb/EndOS/work
 [mkarchiso] INFO:    Installation directory:   arch
-[mkarchiso] INFO:                Build date:   2026-01-19T20:24-0600
+[mkarchiso] INFO:                Build date:   2026-01-19T23:33-0600
 [mkarchiso] INFO:          Output directory:   /home/kaleb/EndOS/out
 [mkarchiso] INFO:        Current build mode:   iso
 [mkarchiso] INFO:               Build modes:   iso
@@ -143,7 +142,7 @@ Collecting wheel==0.45.1 (from -r iso/requirements.txt (line 24))
 [mkarchiso] INFO:                GPG signer:   None
 [mkarchiso] INFO: Code signing certificates:   None
 [mkarchiso] INFO:                   Profile:   /home/kaleb/EndOS/iso
-[mkarchiso] INFO: Pacman configuration file:   /home/kaleb/EndOS/iso/pacman.conf
+[mkarchiso] INFO: Pacman configuration file:   /home/kaleb/EndOS/iso/pacman-build.conf
 [mkarchiso] INFO:           Image file name:   endos-2026.01.19-x86_64.iso
 [mkarchiso] INFO:          ISO volume label:   ENDOS_202601
 [mkarchiso] INFO:             ISO publisher:   EndOS <https://github.com/USBKayble/EndOS>
@@ -319,8 +318,8 @@ Optional dependencies for glib2
     glib2-devel: development tools
     gvfs: most gio functionality
 installing dconf...
-/tmp/alpm_PajsJG/.INSTALL: line 6: vercmp: command not found
-/tmp/alpm_PajsJG/.INSTALL: line 6: ((: < 0 : arithmetic syntax error: operand expected (error token is "< 0 ")
+/tmp/alpm_bttFq5/.INSTALL: line 6: vercmp: command not found
+/tmp/alpm_bttFq5/.INSTALL: line 6: ((: < 0 : arithmetic syntax error: operand expected (error token is "< 0 ")
 installing gsettings-system-schemas...
 installing gsettings-desktop-schemas...
 installing xcb-proto...
@@ -341,8 +340,8 @@ installing freetype2...
 Optional dependencies for freetype2
     harfbuzz: Improved autohinting [pending]
 installing fontconfig...
-/tmp/alpm_GVKYvQ/.INSTALL: line 2: vercmp: command not found
-/tmp/alpm_GVKYvQ/.INSTALL: line 2: ((: < 0 : arithmetic syntax error: operand expected (error token is "< 0 ")
+/tmp/alpm_2iY6I6/.INSTALL: line 2: vercmp: command not found
+/tmp/alpm_2iY6I6/.INSTALL: line 2: ((: < 0 : arithmetic syntax error: operand expected (error token is "< 0 ")
 Rebuilding fontconfig cache...
 installing libxrender...
 installing lzo...
@@ -472,7 +471,7 @@ installing egl-wayland2...
 installing egl-gbm...
 installing egl-x11...
 installing nvidia-utils...
-/tmp/alpm_5H6d1Y/.INSTALL: line 8: systemctl: command not found
+/tmp/alpm_9p4Itv/.INSTALL: line 8: systemctl: command not found
 error: command failed to execute correctly
 Optional dependencies for nvidia-utils
     nvidia-settings: configuration tool
@@ -1969,7 +1968,7 @@ Optional dependencies for openconnect
 installing open-isns...
 installing open-iscsi...
 
->>> Setting Initiatorname 'iqn.2016-04.com.open-iscsi:1b378d5629c'
+>>> Setting Initiatorname 'iqn.2016-04.com.open-iscsi:38de56e05e15'
 installing m4...
 installing flex...
 installing ccid...
@@ -2613,7 +2612,6 @@ Running in chroot, ignoring command 'try-restart'
 [mkarchiso] INFO: Copying /etc/skel/* to user homes...
 [mkarchiso] INFO: Done!
 [mkarchiso] INFO: Creating a list of installed packages on live-enviroment...
-warning: database file for 'custom' does not exist (use '-Sy' to download)
 [mkarchiso] INFO: Done!
 [mkarchiso] INFO: Preparing kernel and initramfs for the ISO 9660 file system...
 [mkarchiso] INFO: Done!
@@ -2630,94 +2628,4 @@ mkfs.fat 4.2 (2021-01-31)
 [mkarchiso] INFO: Creating SquashFS image, this may take some time...
 Parallel mksquashfs: Using 16 processors
 Creating 4.0 filesystem on /home/kaleb/EndOS/work/iso/arch/x86_64/airootfs.sfs, block size 131072.
-[/                                                           ]     0/98958   0%[==-                                                       ]  11000/288883   3%[===============/                                          ]  78100/288883  27%[=================|                                        ]  88100/288883  30%[===================\                                      ]  99800/288883  34%[===========================-                              ] 141200/288883  48%[============================-                             ] 145900/288883  50%[===========================================-              ] 219700/288883  76%[======================================================\   ] 274900/288883  95%Unrecognised xattr prefix system.posix_acl_default
-Unrecognised xattr prefix system.posix_acl_access
-Unrecognised xattr prefix system.posix_acl_default
-
-[=========================================================\] 288883/288883 100%
-
-Exportable Squashfs 4.0 filesystem, zstd compressed, data block size 131072
-	compressed data, compressed metadata, compressed fragments,
-	compressed xattrs, compressed ids
-	duplicates are removed
-Filesystem size 4162267.05 Kbytes (4064.71 Mbytes)
-	40.75% of uncompressed filesystem size (10214858.97 Kbytes)
-Inode table size 2270143 bytes (2216.94 Kbytes)
-	24.16% of uncompressed inode table size (9395734 bytes)
-Directory table size 2659134 bytes (2596.81 Kbytes)
-	35.89% of uncompressed directory table size (7409981 bytes)
-Xattr table size 63 bytes (0.06 Kbytes)
-	26.25% of uncompressed xattr table size (240 bytes)
-Number of duplicate files found 22955
-Number of inodes 265594
-Number of files 209302
-Number of fragments 12990
-Number of symbolic links 39576
-Number of device nodes 0
-Number of fifo nodes 0
-Number of socket nodes 0
-Number of directories 16716
-Number of hard-links 2928
-Number of ids (unique uids + gids) 21
-Number of uids 10
-	root (0)
-	qemu (960)
-	kaleb (1000)
-	brltty (962)
-	unknown (964)
-	git (970)
-	unknown (34)
-	rpc (32)
-	systemd-resolve (976)
-	unknown (971)
-Number of gids 20
-	root (0)
-	unknown (40)
-	network (90)
-	polkitd (102)
-	kaleb (1000)
-	ftp (11)
-	rfkill (981)
-	tty (5)
-	dbus (81)
-	audio (996)
-	brltty (962)
-	games (50)
-	seat (964)
-	git (970)
-	unknown (34)
-	rpc (32)
-	systemd-resolve (976)
-	clock (971)
-	tss (974)
-	systemd-coredump (980)
-[mkarchiso] INFO: Creating checksum file for self-test...
-[mkarchiso] INFO: Done!
-[mkarchiso] INFO: Creating ISO image...
-xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
-
-xorriso : NOTE : Environment variable SOURCE_DATE_EPOCH encountered with value 1768875887
-Drive current: -outdev 'stdio:/home/kaleb/EndOS/out/endos-2026.01.19-x86_64.iso'
-Media current: stdio file, overwriteable
-Media status : is blank
-Media summary: 0 sessions, 0 data blocks, 0 data,  902g free
-Added to ISO image: directory '/'='/home/kaleb/EndOS/work/iso'
-xorriso : UPDATE :     104 files added in 1 seconds
-xorriso : UPDATE :     104 files added in 1 seconds
-xorriso : NOTE : Copying to System Area: 432 bytes from file '/home/kaleb/EndOS/work/iso/boot/syslinux/isohdpfx.bin'
-libisofs: NOTE : Automatically adjusted MBR geometry to 1002/140/63
-libisofs: NOTE : Aligned image size to cylinder size by 1351 blocks
-xorriso : UPDATE :  1.31% done
-xorriso : UPDATE :  12.92% done
-xorriso : UPDATE :  34.41% done
-xorriso : UPDATE :  49.02% done, estimate finish Mon Jan 19 20:36:02 2026
-xorriso : UPDATE :  60.76% done, estimate finish Mon Jan 19 20:36:03 2026
-xorriso : UPDATE :  74.41% done, estimate finish Mon Jan 19 20:36:03 2026
-xorriso : UPDATE :  94.12% done
-ISO image produced: 2339474 sectors
-Written to medium : 2339474 sectors at LBA 0
-Writing to 'stdio:/home/kaleb/EndOS/out/endos-2026.01.19-x86_64.iso' completed successfully.
-
-[mkarchiso] INFO: Done!
-4.5G	/home/kaleb/EndOS/out/endos-2026.01.19-x86_64.iso
-=== Build Complete ===
+[/                                                         ]      0/147996   0%[==/                                                       ]  13700/288884   4%[====/                                                     ]  21900/288884   7%[====|                                                     ]  22600/288884   7%
