@@ -108,12 +108,13 @@ jobs:
       - name: Split ISO for Release
         run: |
           cd out
-          ISO_FILE=$(ls *.iso | head -n 1)
+          ISO_FILE=$(ls endos-*.iso | head -n 1)
           SHA256=$(sha256sum "$ISO_FILE" | cut -d ' ' -f 1)
           echo "ISO_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "ISO_NAME=$ISO_FILE" >> $GITHUB_ENV
           
           echo "Splitting $ISO_FILE into 2GB chunks..."
-          split -b 2000M -d "$ISO_FILE" "${ISO_FILE}.part"
+          split -b 2000M -d "$ISO_FILE" "endos-part"
           rm "$ISO_FILE"
           ls -lh
 
@@ -129,14 +130,29 @@ jobs:
           body: |
             Automated build of EndOS.
             
+            **ISO File**: `${{ env.ISO_NAME }}`
             **SHA256 Checksum**: `${{ env.ISO_SHA256 }}`
             
-            *Note: The ISO has been split into parts to satisfy GitHub file size limits. Join them before using:*
+            ## Installation Instructions
+            
+            The ISO has been split into 2GB parts to satisfy GitHub's file size limits.
+            
+            **To combine the parts:**
             ```bash
-            cat *.part* > EndOS.iso
+            # Linux/macOS
+            cat endos-part* > ${{ env.ISO_NAME }}
+            
+            # Windows (PowerShell)
+            Get-Content endos-part* -Raw | Set-Content -Path "${{ env.ISO_NAME }}" -Encoding Byte
+            ```
+            
+            **Verify the checksum:**
+            ```bash
+            sha256sum ${{ env.ISO_NAME }}
+            # Should match: ${{ env.ISO_SHA256 }}
             ```
           files: |
-            out/*.part*
+            out/endos-part*
             out/build.log
 
       - name: Prepare cache file

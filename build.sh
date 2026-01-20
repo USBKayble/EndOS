@@ -221,6 +221,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     # Update pacman.conf with correct local_repo path
     sed -i "s|Server = file://\$PWD/local_repo|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
     
+    # Create empty local_repo database if it doesn't exist
+    if [ ! -f "$HOST_REPO_DIR/local_repo.db.tar.gz" ]; then
+        echo "    Creating empty local repository database..."
+        repo-add "$HOST_REPO_DIR/local_repo.db.tar.gz"
+    fi
+    
     TEMP_DB_PATH=$(mktemp -d)
     chmod 777 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
