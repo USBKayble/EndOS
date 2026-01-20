@@ -278,11 +278,24 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ "$(whoami)" != "root" ]; then
             REAL_USER="$(whoami)"
         else
-            REAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "kaleb")}
+            # Try multiple methods to find the real user
+            if [ -n "$SUDO_USER" ]; then
+                REAL_USER="$SUDO_USER"
+            elif command -v logname >/dev/null 2>&1 && logname >/dev/null 2>&1; then
+                REAL_USER="$(logname)"
+            else
+                # Fallback: find first non-root user with a home directory
+                REAL_USER=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1; exit}' /etc/passwd)
+            fi
         fi
         
+        echo "    Using build user: $REAL_USER"
+        
         # Ensure the user owns the repo dir so yay can write to it
-        chown -R "$REAL_USER" "$HOST_REPO_DIR"
+        chown -R "$REAL_USER" "$HOST_REPO_DIR" || {
+            echo "    ERROR: Failed to chown $HOST_REPO_DIR to $REAL_USER"
+            exit 1
+        }
 
         for pkg in $AUR_PKGS; do
             # Check if we already have it built in the repo (handle any version format)
