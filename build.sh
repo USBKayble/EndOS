@@ -323,7 +323,11 @@ WHEELS_DIR="${ISO_DIR}/airootfs/var/cache/wheels"
 PIP_CACHE="${SCRIPT_DIR}/.pip_cache"
 mkdir -p "$WHEELS_DIR" "$PIP_CACHE"
 
-# Build wheels locally (includes downloading and building from source if needed)
+# Install build dependencies needed to compile Python packages
+echo "    Installing build dependencies..."
+sudo pacman -S --needed --noconfirm base-devel meson ninja patchelf python-build
+
+# Build wheels locally (compiles packages on build machine)
 # This ensures all packages are available as .whl files for offline installation
 echo "    Building/downloading wheels with pip..."
 if ! pip wheel --cache-dir "$PIP_CACHE" -r "$REQ_FILE" -w "$WHEELS_DIR"; then
@@ -378,7 +382,8 @@ configure_zprofile() {
         echo "    touch ~/.config/dots-hyprland-installed" >> "$target_file"
         echo "fi" >> "$target_file"
         echo "" >> "$target_file"
-        echo "exec start-hyprland" >> "$target_file"
+        echo "# Only start Hyprland if not in SSH session" >> "$target_file"
+        echo "[[ -z \"\$SSH_CONNECTION\" ]] && exec start-hyprland" >> "$target_file"
     fi
 }
 
