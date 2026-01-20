@@ -210,17 +210,31 @@ echo "==========================================" | tee -a "$OUTPUT_FILE"
 echo "Report saved to: $OUTPUT_FILE"
 echo "==========================================" | tee -a "$OUTPUT_FILE"
 
-# Offer to upload to pastebin
+# Automatically upload to pastebin
 echo ""
-echo "Would you like to upload this report to a pastebin? (y/n)"
-read -r UPLOAD_CHOICE
+echo "Uploading debug report to pastebin..."
 
-if [[ "$UPLOAD_CHOICE" =~ ^[Yy]$ ]]; then
-    echo "Uploading to termbin.com..."
+if command -v nc >/dev/null 2>&1; then
+    # Use termbin (simple, no dependencies)
+    PASTEBIN_URL=$(cat "$OUTPUT_FILE" | nc termbin.com 9999)
     
-    if command -v nc >/dev/null 2>&1; then
-        # Use termbin (simple, no dependencies)
-        PASTEBIN_URL=$(cat "$OUTPUT_FILE" | nc termbin.com 9999)
+    if [ -n "$PASTEBIN_URL" ]; then
+        echo ""
+        echo "==========================================" 
+        echo "✓ Upload successful!"
+        echo "URL: $PASTEBIN_URL"
+        echo "==========================================" 
+        echo ""
+        echo "Share this URL for debugging."
+    else
+        echo "✗ Upload failed. Report saved locally at: $OUTPUT_FILE"
+    fi
+else
+    echo "✗ 'nc' (netcat) not available. Trying curl..."
+    
+    if command -v curl >/dev/null 2>&1; then
+        # Try ix.io as fallback
+        PASTEBIN_URL=$(curl -s -F 'f:1=<-' ix.io < "$OUTPUT_FILE")
         
         if [ -n "$PASTEBIN_URL" ]; then
             echo ""
@@ -231,33 +245,11 @@ if [[ "$UPLOAD_CHOICE" =~ ^[Yy]$ ]]; then
             echo ""
             echo "Share this URL for debugging."
         else
-            echo "✗ Upload failed. Please manually share: $OUTPUT_FILE"
+            echo "✗ Upload failed. Report saved locally at: $OUTPUT_FILE"
         fi
     else
-        echo "✗ 'nc' (netcat) not available. Trying curl..."
-        
-        if command -v curl >/dev/null 2>&1; then
-            # Try ix.io as fallback
-            PASTEBIN_URL=$(curl -s -F 'f:1=<-' ix.io < "$OUTPUT_FILE")
-            
-            if [ -n "$PASTEBIN_URL" ]; then
-                echo ""
-                echo "==========================================" 
-                echo "✓ Upload successful!"
-                echo "URL: $PASTEBIN_URL"
-                echo "==========================================" 
-                echo ""
-                echo "Share this URL for debugging."
-            else
-                echo "✗ Upload failed. Please manually share: $OUTPUT_FILE"
-            fi
-        else
-            echo "✗ No upload tools available. Please manually share: $OUTPUT_FILE"
-        fi
+        echo "✗ No upload tools available. Report saved locally at: $OUTPUT_FILE"
     fi
-else
-    echo "Report saved locally at: $OUTPUT_FILE"
-    echo "You can manually upload it or share the file."
 fi
 
 echo ""

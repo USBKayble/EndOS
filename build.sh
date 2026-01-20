@@ -218,10 +218,9 @@ fi
 if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null | grep '\.pkg\.tar\.zst$')" ]; then
     echo "    Updating local package cache..."
     
-    # Update pacman.conf with correct local_repo path
+    # Update pacman.conf with absolute local_repo path (file:// requires absolute paths)
     echo "    Setting local_repo path to: ${SCRIPT_DIR}/local_repo"
-    # Replace any existing local_repo path (not just $PWD placeholder)
-    sed -i "s|Server = file://.*local_repo|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
+    sed -i "s|Server = file://.*local_repo.*|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman.conf"
     
     # Verify the replacement worked
     ACTUAL_PATH=$(grep "Server = file://" "$ISO_DIR/pacman.conf" | grep local_repo | sed 's/.*file:\/\///')
@@ -437,8 +436,19 @@ echo "--> Building ISO..."
 # Ensure output dir exists
 mkdir -p "$OUT_DIR"
 
-# Update BUILDDIR placeholder in pacman-build.conf
-sed -i "s|file://BUILDDIR|file://${SCRIPT_DIR}|g" "$ISO_DIR/pacman-build.conf"
+# Update pacman-build.conf to use absolute path for local_repo (file:// requires absolute paths)
+echo "    Updating pacman-build.conf with absolute path: ${SCRIPT_DIR}/local_repo"
+sed -i "s|Server = file://.*local_repo.*|Server = file://${SCRIPT_DIR}/local_repo|g" "$ISO_DIR/pacman-build.conf"
+
+# Verify the path is correct
+CONFIGURED_PATH=$(grep "Server = file://" "$ISO_DIR/pacman-build.conf" | grep local_repo | sed 's/.*file:\/\///')
+if [ "$CONFIGURED_PATH" != "${SCRIPT_DIR}/local_repo" ]; then
+    echo "    ERROR: Failed to set local_repo path in pacman-build.conf"
+    echo "    Expected: ${SCRIPT_DIR}/local_repo"
+    echo "    Got: $CONFIGURED_PATH"
+    exit 1
+fi
+echo "    Verified: $CONFIGURED_PATH"
 
 # Pre-populate pacman cache AND regenerate repo database
 echo "    Setting up local packages for build..."
