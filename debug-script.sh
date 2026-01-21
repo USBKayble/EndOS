@@ -22,19 +22,21 @@ echo "" >> "$OUTPUT_FILE"
 #==========================================
 # HOTFIX: Missing 'qs' wrapper
 #==========================================
-if ! command -v qs >/dev/null 2>&1; then
-    add_section "HOTFIX: APPLYING QS WRAPPER"
-    echo "Applying Hotfix: Creating 'qs' wrapper..." | tee -a "$OUTPUT_FILE"
+add_section "HOTFIX STATUS"
+if [ ! -f "/usr/local/bin/qs" ]; then
+    echo "Hotfix: 'qs' wrapper missing. Attempting to create..." | tee -a "$OUTPUT_FILE"
     if [ -f "/usr/bin/quickshell" ]; then
         sudo bash -c 'cat <<EOF > /usr/local/bin/qs
 #!/usr/bin/env bash
 exec quickshell "\$@"
 EOF
 chmod +x /usr/local/bin/qs'
-        echo "✓ 'qs' wrapper created at /usr/local/bin/qs" | tee -a "$OUTPUT_FILE"
+        echo "✓ 'qs' wrapper created successfully" | tee -a "$OUTPUT_FILE"
     else
-        echo "✗ Quickshell binary not found, cannot apply hotfix" | tee -a "$OUTPUT_FILE"
+        echo "✗ Error: /usr/bin/quickshell not found" | tee -a "$OUTPUT_FILE"
     fi
+else
+    echo "✓ 'qs' wrapper already exists" | tee -a "$OUTPUT_FILE"
 fi
 
 add_section "1. USER INFO"
