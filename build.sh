@@ -438,6 +438,11 @@ TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$TARBALL_COUNT" -gt 0 ]; then
     echo "    Found $TARBALL_COUNT source distributions that need building..."
     
+    # Create a Python 3.12 venv for building wheels
+    echo "    Creating Python 3.12 venv for building..."
+    BUILD_VENV="/tmp/endos-wheel-builder-build-$$"
+    uv venv "$BUILD_VENV" -p 3.12 --quiet
+    
     # Build each tar.gz into a wheel
     for tarball in "$WHEELS_DIR"/*.tar.gz; do
         [ -e "$tarball" ] || continue
@@ -445,8 +450,8 @@ if [ "$TARBALL_COUNT" -gt 0 ]; then
         PACKAGE_NAME=$(basename "$tarball" .tar.gz | sed -E 's/-[0-9].*//')
         echo "      Building wheel for: $PACKAGE_NAME"
         
-        # Try to build the wheel
-        if pip wheel --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
+        # Try to build the wheel using venv's pip
+        if "$BUILD_VENV/bin/pip" wheel --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
             echo "        ✓ Successfully built $PACKAGE_NAME"
             # Remove the tar.gz if wheel was created successfully
             # Check if a corresponding .whl file exists (try both hyphen and underscore versions)
@@ -461,6 +466,8 @@ if [ "$TARBALL_COUNT" -gt 0 ]; then
             echo "        Keeping source distribution for manual installation"
         fi
     done
+    
+    rm -rf "$BUILD_VENV"
     
     # Recount tarballs after building
     REMAINING_TARBALLS=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
