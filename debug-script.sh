@@ -217,7 +217,14 @@ if [ -d "/var/cache/wheels" ]; then
     echo "Wheels available: $WHEEL_COUNT" | tee -a "$OUTPUT_FILE"
     echo "Source distributions: $TARBALL_COUNT" | tee -a "$OUTPUT_FILE"
     
+    echo "" | tee -a "$OUTPUT_FILE"
+    echo "Wheel Python versions:" | tee -a "$OUTPUT_FILE"
+    ls /var/cache/wheels/*.whl 2>/dev/null | while read wheel; do
+        basename "$wheel" | grep -oE "cp3[0-9]+" | head -1
+    done | sort | uniq -c | tee -a "$OUTPUT_FILE"
+    
     if [ "$TARBALL_COUNT" -gt 0 ]; then
+        echo "" | tee -a "$OUTPUT_FILE"
         echo "⚠ WARNING: Source distributions found (should be wheels only)" | tee -a "$OUTPUT_FILE"
         ls /var/cache/wheels/*.tar.gz 2>&1 | tee -a "$OUTPUT_FILE"
     fi
