@@ -19,6 +19,102 @@ echo "Generated: $(date)" >> "$OUTPUT_FILE"
 echo "Hostname: $(hostname)" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
+add_section "HOTFIX - VENV SERVICE DIAGNOSTICS"
+{
+    echo "=== Checking why venv service isn't running ==="
+    echo "Service status:"
+    sudo systemctl status setup-quickshell-venv.service --no-pager 2>&1 | head -20
+    
+    echo ""
+    echo "Service show details:"
+    sudo systemctl show setup-quickshell-venv.service 2>&1 | grep -E "ConditionResult|AssertResult|Result|ActiveState|SubState"
+    
+    echo ""
+    echo "Service logs:"
+    sudo journalctl -u setup-quickshell-venv.service --no-pager -n 50 2>&1
+    
+    echo ""
+    echo "Checking if service file exists:"
+    ls -la /etc/systemd/system/setup-quickshell-venv.service 2>&1
+    
+    echo ""
+    echo "Checking symlink:"
+    ls -la /etc/systemd/system/multi-user.target.wants/setup-quickshell-venv.service 2>&1
+} | tee -a "$OUTPUT_FILE"
+
+add_section "HOTFIX - MANUAL VENV SETUP"
+{
+    echo "Checking current venv state..."
+    if [ -f "$HOME/.local/state/quickshell/.venv/bin/pip" ]; then
+        PKG_COUNT=$("$HOME/.local/state/quickshell/.venv/bin/pip" list 2>/dev/null | wc -l)
+        echo "Current package count: $PKG_COUNT"
+    else
+        echo "Venv pip not found"
+        PKG_COUNT=0
+    fi
+    
+    if [ "$PKG_COUNT" -lt 10 ]; then
+        echo ""
+        echo "=== Running manual venv setup ==="
+        cd "$HOME"
+        
+        # Remove old venv if it exists
+        if [ -d "$HOME/.local/state/quickshell/.venv" ]; then
+            echo "Removing old venv..."
+            rm -rf "$HOME/.local/state/quickshell/.venv"
+        fi
+        
+        mkdir -p "$HOME/.local/state/quickshell"
+        
+        echo "Creating venv with Python 3.12..."
+        uv venv --prompt .venv "$HOME/.local/state/quickshell/.venv" -p 3.12 2>&1
+        
+        echo ""
+        echo "Installing packages from wheels..."
+        source "$HOME/.local/state/quickshell/.venv/bin/activate"
+        uv pip install --no-index --find-links /var/cache/wheels \
+            -r "$HOME/dots-hyprland/sdata/uv/requirements.txt" 2>&1 | tail -30
+        deactivate
+        
+        echo ""
+        echo "=== Venv setup complete ==="
+        echo "Installed packages:"
+        "$HOME/.local/state/quickshell/.venv/bin/pip" list 2>&1
+    else
+        echo "✓ Venv already has $PKG_COUNT packages installed"
+    fi
+} | tee -a "$OUTPUT_FILE"
+
+add_section "HOTFIX - START QUICKSHELL"
+{
+    echo "Attempting to start quickshell with ii config..."
+    export ILLOGICAL_IMPULSE_VIRTUAL_ENV="$HOME/.local/state/quickshell/.venv"
+    
+    if pgrep -x quickshell >/dev/null 2>&1; then
+        echo "✓ Quickshell is already running"
+    else
+        echo "Starting quickshell in background..."
+        nohup quickshell -c ii > /tmp/quickshell-startup.log 2>&1 &
+        QUICKSHELL_PID=$!
+        
+        sleep 2
+        
+        if pgrep -x quickshell >/dev/null 2>&1; then
+            echo "✓ Quickshell started successfully (PID: $QUICKSHELL_PID)"
+        else
+            echo "✗ Quickshell failed to start"
+            echo "Startup log:"
+            cat /tmp/quickshell-startup.log 2>&1 | head -50
+        fi
+    fi
+} | tee -a "$OUTPUT_FILE"
+
+echo "" >> "$OUTPUT_FILE"
+echo "===========================================" >> "$OUTPUT_FILE"
+echo "POST-HOTFIX DIAGNOSTICS" >> "$OUTPUT_FILE"
+echo "===========================================" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
 add_section "1. USER INFO"
 {
     echo "User: $(whoami)"
@@ -129,23 +225,13 @@ else
     echo "✗ Wheels cache directory not found" | tee -a "$OUTPUT_FILE"
 fi
 
-add_section "14. SUDO SERVICE DIAGNOSTICS"
-{
-    echo "Service Status:"
-    sudo systemctl status setup-quickshell-venv.service --no-pager
-    
-    echo ""
-    echo "Service Properties (Conditions/Asserts):"
-    sudo systemctl show setup-quickshell-venv.service | grep -E "Condition|Assert|ActiveState|LoadState|UnitFileState"
-    
-    echo ""
-    echo "Service Logs:"
-    sudo journalctl -u setup-quickshell-venv.service --no-pager -n 50
-    
-    echo ""
-    echo "Service Definition:"
-    sudo systemctl cat setup-quickshell-venv.service
-} | tee -a "$OUTPUT_FILE"
+add_section "14. SERVICE LOGS"
+echo "=== setup-quickshell-venv.service logs ===" | tee -a "$OUTPUT_FILE"
+journalctl -u setup-quickshell-venv.service --no-pager -n 50 2>&1 | tee -a "$OUTPUT_FILE"
+
+echo "" | tee -a "$OUTPUT_FILE"
+echo "=== configure-liveuser-groups.service logs ===" | tee -a "$OUTPUT_FILE"
+journalctl -u configure-liveuser-groups.service --no-pager -n 50 2>&1 | tee -a "$OUTPUT_FILE"
 
 add_section "15. SYSTEM INFO"
 {
