@@ -418,16 +418,16 @@ echo "    Counting required packages..."
 REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
 echo "    Required packages: $REQUIRED_COUNT"
 
-# Download packages with uv (faster and more reliable)
-echo "    Downloading packages with uv..."
-if ! uv pip compile "$REQ_FILE" --quiet 2>/dev/null | uv pip download --dest "$WHEELS_DIR" --python-version 3.12 - 2>&1; then
-    echo "    WARNING: uv download had issues, falling back to pip..."
-    # Fallback to pip if uv fails
-    pip download --dest "$WHEELS_DIR" --prefer-binary -r "$REQ_FILE" 2>&1 || {
+# Download packages with pip for Python 3.12
+echo "    Downloading packages for Python 3.12..."
+pip download --dest "$WHEELS_DIR" --prefer-binary --python-version 3.12 --only-binary=:all: -r "$REQ_FILE" 2>&1 || {
+    echo "    Some packages don't have binary wheels, downloading with build support..."
+    pip download --dest "$WHEELS_DIR" --prefer-binary --python-version 3.12 -r "$REQ_FILE" 2>&1 || {
         echo "    ERROR: Failed to download Python packages. Aborting."
         exit 1
     }
-fi
+}
+
 
 # Check for tar.gz files that need building
 echo "    Checking for source distributions..."
