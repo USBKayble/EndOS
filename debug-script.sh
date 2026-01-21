@@ -19,6 +19,23 @@ echo "Generated: $(date)" >> "$OUTPUT_FILE"
 echo "Hostname: $(hostname)" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
+#==========================================
+# HOTFIX: Missing 'qs' wrapper
+#==========================================
+if ! command -v qs >/dev/null 2>&1; then
+    echo "Applying Hotfix: Creating 'qs' wrapper..." | tee -a "$OUTPUT_FILE"
+    if [ -f "/usr/bin/quickshell" ]; then
+        sudo bash -c 'cat <<EOF > /usr/local/bin/qs
+#!/usr/bin/env bash
+exec quickshell "\$@"
+EOF
+chmod +x /usr/local/bin/qs'
+        echo "✓ 'qs' wrapper created at /usr/local/bin/qs" | tee -a "$OUTPUT_FILE"
+    else
+        echo "✗ Quickshell binary not found, cannot apply hotfix" | tee -a "$OUTPUT_FILE"
+    fi
+fi
+
 add_section "1. USER INFO"
 {
     echo "User: $(whoami)"

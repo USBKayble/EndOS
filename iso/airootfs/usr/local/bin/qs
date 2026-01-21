@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper for quickshell to permit using 'qs' command as expected by dots-hyprland
+exec quickshell "$@"
