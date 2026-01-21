@@ -420,12 +420,9 @@ echo "    Required packages: $REQUIRED_COUNT"
 
 # Download packages with pip for Python 3.12
 echo "    Downloading packages for Python 3.12..."
-pip download --dest "$WHEELS_DIR" --prefer-binary --python-version 3.12 --only-binary=:all: -r "$REQ_FILE" 2>&1 || {
-    echo "    Some packages don't have binary wheels, downloading with build support..."
-    pip download --dest "$WHEELS_DIR" --prefer-binary --python-version 3.12 -r "$REQ_FILE" 2>&1 || {
-        echo "    ERROR: Failed to download Python packages. Aborting."
-        exit 1
-    }
+pip download --dest "$WHEELS_DIR" --no-deps --python-version 3.12 -r "$REQ_FILE" 2>&1 || {
+    echo "    ERROR: Failed to download Python packages. Aborting."
+    exit 1
 }
 
 
