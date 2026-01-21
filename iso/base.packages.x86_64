@@ -53,6 +53,8 @@ lvm2
 man-db
 man-pages
 mdadm
+memtest86+
+memtest86+-efi
 mkinitcpio
 mkinitcpio-archiso
 mkinitcpio-nfs-utils
@@ -67,6 +69,7 @@ nilfs-utils
 nmap
 ntfs-3g
 nvme-cli
+openbsd-netcat
 open-iscsi
 openconnect
 openpgp-card-tools
@@ -109,6 +112,7 @@ xdg-utils
 xfsprogs
 xl2tpd
 zsh
+quickshell
 
 # Login manager (fallback)
 greetd

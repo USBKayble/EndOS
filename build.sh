@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -eo pipefail
+# Exit on error, but allow pipes and subshells to handle their own errors
+set -e
+
+# Trap errors and show where they occurred
+trap 'echo "ERROR: Script failed at line $LINENO with exit code $?" >&2' ERR
 
 # Get script directory for portable paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,6 +38,8 @@ declare -A BUILD_ALIASES=(
 echo "--> Cleaning up previous build artifacts..."
 sudo rm -rf "$WORK_DIR"
 rm -rf "$REPO_DIR"
+rm -rf ".pip_cache"
+rm -f "iso/packages.x86_64"
 
 # Step 2: Clone dots-hyprland
 echo "--> Cloning dots-hyprland..."
@@ -242,7 +248,10 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     chmod 777 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
-    sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"
+    if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
+        echo "    ERROR: Failed to sync package databases"
+        exit 1
+    fi
     
     # Track which packages fail to download from official repos (potential AUR packages)
     echo "    Downloading official packages..."
@@ -350,10 +359,28 @@ fi
 # Sync packages to airootfs and generate database
 echo "    Syncing local packages to ISO..."
 if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
-    cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_DIR/" 2>/dev/null || true
-    # Generate database in the airootfs location
-    repo-add -n -R "$LOCAL_REPO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_DIR"/*.pkg.tar.zst >/dev/null
-    echo "    $(ls "$LOCAL_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l) packages synced with database"
+    echo "    Copying packages to ISO repository..."
+    if ! cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_DIR/" 2>&1; then
+        echo "    ERROR: Failed to copy packages to ISO repository"
+        exit 1
+    fi
+    
+    # Remove old database files to prevent duplicate entries
+    echo "    Cleaning old package database..."
+    rm -f "$LOCAL_REPO_DIR/local_repo.db"*
+    rm -f "$LOCAL_REPO_DIR/local_repo.files"*
+    
+    # Generate fresh database from all packages
+    echo "    Generating package database..."
+    if ! repo-add -n -R "$LOCAL_REPO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_DIR"/*.pkg.tar.zst; then
+        echo "    ERROR: Failed to generate package database"
+        exit 1
+    fi
+    
+    PKG_COUNT=$(ls "$LOCAL_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l)
+    echo "    ✓ $PKG_COUNT packages synced with database"
+else
+    echo "    WARNING: No packages found in $HOST_REPO_DIR"
 fi
 
 # Clean up temp db if it was created
@@ -366,42 +393,124 @@ mkdir -p "$WHEELS_DIR" "$PIP_CACHE"
 
 # Install build dependencies needed to compile Python packages
 echo "    Installing build dependencies..."
-sudo pacman -S --needed --noconfirm base-devel meson ninja patchelf python-build
+sudo pacman -S --needed --noconfirm \
+    base-devel \
+    meson \
+    ninja \
+    patchelf \
+    python-build \
+    cairo \
+    gobject-introspection \
+    wayland \
+    wayland-protocols \
+    dbus \
+    dbus-glib \
+    python-dbus \
+    libffi \
+    glib2 \
+    openblas \
+    lapack \
+    uv
 
-# Build wheels locally (compiles packages on build machine)
-# This ensures all packages are available as .whl files for offline installation
-echo "    Building/downloading wheels with pip..."
-if ! pip wheel --cache-dir "$PIP_CACHE" -r "$REQ_FILE" -w "$WHEELS_DIR"; then
-    echo "ERROR: Failed to build Python wheels. Aborting."
-    exit 1
+# Count unique packages in requirements.txt
+echo "    Counting required packages..."
+REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
+echo "    Required packages: $REQUIRED_COUNT"
+
+# Download packages with uv (faster and more reliable)
+echo "    Downloading packages with uv..."
+if ! uv pip compile "$REQ_FILE" --quiet 2>/dev/null | uv pip download --dest "$WHEELS_DIR" --python-version 3.12 - 2>&1; then
+    echo "    WARNING: uv download had issues, falling back to pip..."
+    # Fallback to pip if uv fails
+    pip download --dest "$WHEELS_DIR" --prefer-binary -r "$REQ_FILE" 2>&1 || {
+        echo "    ERROR: Failed to download Python packages. Aborting."
+        exit 1
+    }
 fi
 
-# Verify all required packages have been downloaded
-echo "    Verifying Python wheels..."
-WHEELS_FAILED=false
-while IFS= read -r line; do
-    # Skip comments and empty lines
-    [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
-    # Extract package name (before ==, >=, etc.)
-    pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-    # Try both underscore and hyphen versions (pip naming is inconsistent)
-    pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
-    pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
-    # Check if any file matches either format
-    if ! ls "$WHEELS_DIR"/${pkg_underscore}* >/dev/null 2>&1 && \
-       ! ls "$WHEELS_DIR"/*${pkg_underscore}* >/dev/null 2>&1 && \
-       ! ls "$WHEELS_DIR"/${pkg_hyphen}* >/dev/null 2>&1 && \
-       ! ls "$WHEELS_DIR"/*${pkg_hyphen}* >/dev/null 2>&1; then
-        echo "      - MISSING: $pkg_base"
-        WHEELS_FAILED=true
+# Check for tar.gz files that need building
+echo "    Checking for source distributions..."
+TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
+
+if [ "$TARBALL_COUNT" -gt 0 ]; then
+    echo "    Found $TARBALL_COUNT source distributions that need building..."
+    
+    # Build each tar.gz into a wheel
+    for tarball in "$WHEELS_DIR"/*.tar.gz; do
+        [ -e "$tarball" ] || continue
+        
+        PACKAGE_NAME=$(basename "$tarball" .tar.gz | sed -E 's/-[0-9].*//')
+        echo "      Building wheel for: $PACKAGE_NAME"
+        
+        # Try to build the wheel
+        if pip wheel --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
+            echo "        ✓ Successfully built $PACKAGE_NAME"
+            # Remove the tar.gz if wheel was created successfully
+            # Check if a corresponding .whl file exists (try both hyphen and underscore versions)
+            PACKAGE_NAME_UNDERSCORE=$(echo "$PACKAGE_NAME" | tr '-' '_')
+            if ls "$WHEELS_DIR"/${PACKAGE_NAME}*.whl >/dev/null 2>&1 || \
+               ls "$WHEELS_DIR"/${PACKAGE_NAME_UNDERSCORE}*.whl >/dev/null 2>&1; then
+                rm -f "$tarball"
+                echo "        ✓ Cleaned up source distribution"
+            fi
+        else
+            echo "        ✗ WARNING: Failed to build wheel for $PACKAGE_NAME"
+            echo "        Keeping source distribution for manual installation"
+        fi
+    done
+    
+    # Recount tarballs after building
+    REMAINING_TARBALLS=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
+    if [ "$REMAINING_TARBALLS" -gt 0 ]; then
+        echo "    ⚠ WARNING: $REMAINING_TARBALLS source distributions could not be built into wheels"
+        echo "    These will be installed from source during venv setup"
     fi
-done < "$REQ_FILE"
+fi
 
-if [ "$WHEELS_FAILED" = true ]; then
-    echo "ERROR: Some Python wheels are missing. Aborting."
+# Final verification: count wheels and compare to requirements
+echo "    Verifying Python packages..."
+WHEEL_COUNT=$(ls "$WHEELS_DIR"/*.whl 2>/dev/null | wc -l)
+TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
+TOTAL_PACKAGES=$((WHEEL_COUNT + TARBALL_COUNT))
+
+echo "    Wheels: $WHEEL_COUNT"
+echo "    Source distributions: $TARBALL_COUNT"
+echo "    Total packages: $TOTAL_PACKAGES / $REQUIRED_COUNT required"
+
+if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
+    echo "    ERROR: Missing packages! Expected $REQUIRED_COUNT, got $TOTAL_PACKAGES"
+    echo "    Checking which packages are missing..."
+    
+    # Detailed check for missing packages
+    MISSING_PACKAGES=""
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+        
+        # Extract package name (before ==, >=, etc.)
+        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
+        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
+        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
+        
+        # Check if package exists in any form
+        if ! ls "$WHEELS_DIR"/${pkg_underscore}* >/dev/null 2>&1 && \
+           ! ls "$WHEELS_DIR"/*${pkg_underscore}* >/dev/null 2>&1 && \
+           ! ls "$WHEELS_DIR"/${pkg_hyphen}* >/dev/null 2>&1 && \
+           ! ls "$WHEELS_DIR"/*${pkg_hyphen}* >/dev/null 2>&1; then
+            MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+        fi
+    done < "$REQ_FILE"
+    
+    if [ -n "$MISSING_PACKAGES" ]; then
+        echo "    Missing packages:"
+        echo -e "$MISSING_PACKAGES"
+    fi
+    
+    echo "    ERROR: Python package verification failed. Aborting."
     exit 1
 fi
-echo "    All Python wheels verified."
+
+echo "    ✓ All Python packages verified successfully!"
 
 # Step 7: Post-Install Config
 echo "--> Configuring post-install hooks..."

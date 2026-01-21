@@ -1,7 +1,7 @@
 [Unit]
 Description=Setup quickshell Python virtual environment for liveuser
-Before=getty@tty1.service
-After=pacman-init.service
+After=local-fs.target
+Before=display-manager.service
 
 [Service]
 Type=oneshot
@@ -9,6 +9,8 @@ User=liveuser
 Environment="HOME=/home/liveuser"
 ExecStart=/usr/bin/bash -c 'mkdir -p /home/liveuser/.local/state/quickshell && uv venv --prompt .venv /home/liveuser/.local/state/quickshell/.venv -p 3.12 && source /home/liveuser/.local/state/quickshell/.venv/bin/activate && uv pip install --no-index --find-links /var/cache/wheels -r /home/liveuser/dots-hyprland/sdata/uv/requirements.txt && deactivate'
 RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

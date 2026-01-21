@@ -106,6 +106,8 @@ man-db
 man-pages
 matugen-bin
 mdadm
+memtest86+
+memtest86+-efi
 mesa
 millennium
 mkinitcpio
@@ -125,6 +127,7 @@ nmap
 ntfs-3g
 nvme-cli
 obs-studio
+openbsd-netcat
 openconnect
 open-iscsi
 openpgp-card-tools
@@ -159,6 +162,7 @@ qt6-tools
 qt6-translations
 qt6-virtualkeyboard
 qt6-wayland
+quickshell
 refind
 reflector
 ripgrep

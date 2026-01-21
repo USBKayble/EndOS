@@ -1,256 +1,36 @@
 #!/bin/bash
-# EndOS Quickshell Debug Script
-# Collects diagnostic information and optionally uploads to pastebin
+# EndOS Debug Script Wrapper
+# Downloads and runs the latest version from GitHub
 
-set -e
+SCRIPT_URL="https://raw.githubusercontent.com/USBKayble/EndOS/main/debug-script.sh"
+TEMP_SCRIPT="/tmp/endos-debug-latest.sh"
 
-OUTPUT_FILE="/tmp/endos-debug-$(date +%Y%m%d-%H%M%S).txt"
+echo "Downloading latest debug script..."
 
-# Function to add section to output
-add_section() {
-    echo "" | tee -a "$OUTPUT_FILE"
-    echo "==========================================" | tee -a "$OUTPUT_FILE"
-    echo "$1" | tee -a "$OUTPUT_FILE"
-    echo "==========================================" | tee -a "$OUTPUT_FILE"
-}
-
-# Start diagnostic
-echo "EndOS Quickshell Diagnostic Report" > "$OUTPUT_FILE"
-echo "Generated: $(date)" >> "$OUTPUT_FILE"
-echo "Hostname: $(hostname)" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-add_section "1. USER INFO"
-{
-    echo "User: $(whoami)"
-    echo "TTY: $(tty)"
-    echo "Home: $HOME"
-    echo "Shell: $SHELL"
-} | tee -a "$OUTPUT_FILE"
-
-add_section "2. VENV SERVICE STATUS"
-systemctl status setup-quickshell-venv --no-pager 2>&1 | tee -a "$OUTPUT_FILE"
-
-add_section "3. VENV DIRECTORY"
-if [ -d ~/.local/state/quickshell/.venv ]; then
-    echo "✓ Venv directory exists" | tee -a "$OUTPUT_FILE"
-    ls -la ~/.local/state/quickshell/.venv/ 2>&1 | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ Venv directory MISSING" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "4. PYTHON PACKAGES IN VENV"
-if [ -f ~/.local/state/quickshell/.venv/bin/activate ]; then
-    {
-        source ~/.local/state/quickshell/.venv/bin/activate
-        echo "Installed packages:"
-        pip list 2>&1 || echo "✗ pip not available in venv"
-        echo ""
-        echo "Package count: $(pip list 2>/dev/null | wc -l)"
-        deactivate
-    } | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ Venv activation script missing" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "5. ENVIRONMENT VARIABLES"
-{
-    echo "ILLOGICAL_IMPULSE_VIRTUAL_ENV=$ILLOGICAL_IMPULSE_VIRTUAL_ENV"
-    echo "XDG_STATE_HOME=$XDG_STATE_HOME"
-    echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME"
-    echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
-    echo "HYPRLAND_INSTANCE_SIGNATURE=$HYPRLAND_INSTANCE_SIGNATURE"
-} | tee -a "$OUTPUT_FILE"
-
-add_section "6. QUICKSHELL BINARY"
-if which quickshell >/dev/null 2>&1; then
-    {
-        echo "✓ Quickshell found: $(which quickshell)"
-        quickshell --version 2>&1 || echo "Version check failed"
-    } | tee -a "$OUTPUT_FILE"
-else
-    {
-        echo "✗ Quickshell NOT FOUND"
-        echo "Checking if package is installed:"
-        pacman -Q quickshell 2>&1
-    } | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "7. QUICKSHELL CONFIG"
-if [ -d ~/.config/quickshell ]; then
-    echo "✓ Config directory exists" | tee -a "$OUTPUT_FILE"
-    ls -la ~/.config/quickshell/ 2>&1 | tee -a "$OUTPUT_FILE"
-else
-    {
-        echo "✗ Config directory MISSING"
-        echo "Checking dots-hyprland:"
-        ls -la ~/dots-hyprland/dots/.config/quickshell/ 2>&1 | head -10
-    } | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "8. HYPRLAND ENV CONFIG"
-if [ -f ~/.config/hypr/hyprland/env.conf ]; then
-    {
-        echo "✓ env.conf exists"
-        grep -i "ILLOGICAL\|quickshell" ~/.config/hypr/hyprland/env.conf 2>&1
-    } | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ env.conf MISSING" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "9. HYPRLAND MAIN CONFIG"
-if [ -f ~/.config/hypr/hyprland.conf ]; then
-    {
-        echo "✓ hyprland.conf exists"
-        echo "Checking if env.conf is sourced:"
-        grep "env.conf" ~/.config/hypr/hyprland.conf 2>&1
-    } | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ hyprland.conf MISSING" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "10. HYPRLAND EXEC CONFIGS"
-{
-    echo "Checking for quickshell autostart:"
-    grep -r "quickshell" ~/.config/hypr/ 2>&1 || echo "✗ No quickshell exec found"
-} | tee -a "$OUTPUT_FILE"
-
-add_section "11. QUICKSHELL PROCESS"
-if ps aux | grep -v grep | grep quickshell >/dev/null; then
-    {
-        echo "✓ Quickshell is RUNNING"
-        ps aux | grep -v grep | grep quickshell
-    } | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ Quickshell is NOT RUNNING" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "12. HYPRLAND LOGS"
-if [ -f ~/.cache/hyprland/hyprland.log ]; then
-    {
-        echo "Last 30 lines mentioning quickshell or error:"
-        grep -i "quickshell\|error" ~/.cache/hyprland/hyprland.log 2>&1 | tail -30
-    } | tee -a "$OUTPUT_FILE"
-else
-    echo "✗ Hyprland log not found" | tee -a "$OUTPUT_FILE"
-fi
-
-add_section "13. CACHED WHEELS"
-{
-    echo "Wheels available: $(ls /var/cache/wheels/*.whl 2>/dev/null | wc -l)"
-    echo "Source distributions: $(ls /var/cache/wheels/*.tar.gz 2>/dev/null | wc -l)"
-    if [ $(ls /var/cache/wheels/*.tar.gz 2>/dev/null | wc -l) -gt 0 ]; then
-        echo "⚠ WARNING: Source distributions found (should be wheels only)"
-        ls /var/cache/wheels/*.tar.gz 2>&1
-    fi
-} | tee -a "$OUTPUT_FILE"
-
-add_section "14. SERVICE LOGS"
-{
-    echo "=== setup-quickshell-venv.service logs ==="
-    sudo journalctl -u setup-quickshell-venv --no-pager -n 50 2>&1
-    echo ""
-    echo "=== configure-liveuser-groups.service logs ==="
-    sudo journalctl -u configure-liveuser-groups --no-pager -n 20 2>&1
-} | tee -a "$OUTPUT_FILE"
-
-add_section "15. MANUAL QUICKSHELL START TEST"
-{
-    echo "Attempting to start quickshell manually..."
-    export ILLOGICAL_IMPULSE_VIRTUAL_ENV=~/.local/state/quickshell/.venv
-    timeout 5 quickshell 2>&1 | head -30 || echo "Quickshell failed or timed out"
-} | tee -a "$OUTPUT_FILE"
-
-# Summary
-add_section "SUMMARY"
-ISSUES=0
-
-if ! systemctl is-active setup-quickshell-venv >/dev/null 2>&1; then
-    echo "✗ Venv service failed" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-if [ ! -d ~/.local/state/quickshell/.venv/lib ]; then
-    echo "✗ Venv not properly created" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-if [ -z "$ILLOGICAL_IMPULSE_VIRTUAL_ENV" ]; then
-    echo "✗ Environment variable not set" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-if ! which quickshell >/dev/null 2>&1; then
-    echo "✗ Quickshell binary not found" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-if [ ! -d ~/.config/quickshell ]; then
-    echo "✗ Quickshell config missing" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-if ! ps aux | grep -v grep | grep quickshell >/dev/null; then
-    echo "✗ Quickshell not running" | tee -a "$OUTPUT_FILE"
-    ((ISSUES++))
-fi
-
-echo "" | tee -a "$OUTPUT_FILE"
-echo "Total issues found: $ISSUES" | tee -a "$OUTPUT_FILE"
-
-if [ $ISSUES -eq 0 ]; then
-    echo "✓ No obvious issues detected" | tee -a "$OUTPUT_FILE"
-else
-    echo "⚠ Issues detected - see details above" | tee -a "$OUTPUT_FILE"
-fi
-
-# Save location
-echo "" | tee -a "$OUTPUT_FILE"
-echo "==========================================" | tee -a "$OUTPUT_FILE"
-echo "Report saved to: $OUTPUT_FILE"
-echo "==========================================" | tee -a "$OUTPUT_FILE"
-
-# Automatically upload to pastebin
-echo ""
-echo "Uploading debug report to pastebin..."
-
-if command -v nc >/dev/null 2>&1; then
-    # Use termbin (simple, no dependencies)
-    PASTEBIN_URL=$(cat "$OUTPUT_FILE" | nc termbin.com 9999)
-    
-    if [ -n "$PASTEBIN_URL" ]; then
-        echo ""
-        echo "==========================================" 
-        echo "✓ Upload successful!"
-        echo "URL: $PASTEBIN_URL"
-        echo "==========================================" 
-        echo ""
-        echo "Share this URL for debugging."
+# Try to download the latest version
+if command -v curl >/dev/null 2>&1; then
+    if curl -fsSL "$SCRIPT_URL" -o "$TEMP_SCRIPT" 2>/dev/null; then
+        echo "✓ Downloaded latest version"
+        chmod +x "$TEMP_SCRIPT"
+        exec bash "$TEMP_SCRIPT" "$@"
     else
-        echo "✗ Upload failed. Report saved locally at: $OUTPUT_FILE"
+        echo "⚠ Failed to download latest version, using built-in fallback"
+    fi
+elif command -v wget >/dev/null 2>&1; then
+    if wget -q "$SCRIPT_URL" -O "$TEMP_SCRIPT" 2>/dev/null; then
+        echo "✓ Downloaded latest version"
+        chmod +x "$TEMP_SCRIPT"
+        exec bash "$TEMP_SCRIPT" "$@"
+    else
+        echo "⚠ Failed to download latest version, using built-in fallback"
     fi
 else
-    echo "✗ 'nc' (netcat) not available. Trying curl..."
-    
-    if command -v curl >/dev/null 2>&1; then
-        # Try ix.io as fallback
-        PASTEBIN_URL=$(curl -s -F 'f:1=<-' ix.io < "$OUTPUT_FILE")
-        
-        if [ -n "$PASTEBIN_URL" ]; then
-            echo ""
-            echo "==========================================" 
-            echo "✓ Upload successful!"
-            echo "URL: $PASTEBIN_URL"
-            echo "==========================================" 
-            echo ""
-            echo "Share this URL for debugging."
-        else
-            echo "✗ Upload failed. Report saved locally at: $OUTPUT_FILE"
-        fi
-    else
-        echo "✗ No upload tools available. Report saved locally at: $OUTPUT_FILE"
-    fi
+    echo "ERROR: No download tool available (curl/wget)"
+    echo "Please install curl or wget to use the debug script"
+    exit 1
 fi
 
-echo ""
-echo "Done!"
+# If we get here, download failed
+echo "ERROR: Could not download debug script from GitHub"
+echo "Please check your internet connection and try again"
+exit 1
