@@ -129,13 +129,23 @@ else
     echo "✗ Wheels cache directory not found" | tee -a "$OUTPUT_FILE"
 fi
 
-add_section "14. SERVICE LOGS"
-echo "=== setup-quickshell-venv.service logs ===" | tee -a "$OUTPUT_FILE"
-journalctl -u setup-quickshell-venv.service --no-pager -n 50 2>&1 | tee -a "$OUTPUT_FILE"
-
-echo "" | tee -a "$OUTPUT_FILE"
-echo "=== configure-liveuser-groups.service logs ===" | tee -a "$OUTPUT_FILE"
-journalctl -u configure-liveuser-groups.service --no-pager -n 50 2>&1 | tee -a "$OUTPUT_FILE"
+add_section "14. SUDO SERVICE DIAGNOSTICS"
+{
+    echo "Service Status:"
+    sudo systemctl status setup-quickshell-venv.service --no-pager
+    
+    echo ""
+    echo "Service Properties (Conditions/Asserts):"
+    sudo systemctl show setup-quickshell-venv.service | grep -E "Condition|Assert|ActiveState|LoadState|UnitFileState"
+    
+    echo ""
+    echo "Service Logs:"
+    sudo journalctl -u setup-quickshell-venv.service --no-pager -n 50
+    
+    echo ""
+    echo "Service Definition:"
+    sudo systemctl cat setup-quickshell-venv.service
+} | tee -a "$OUTPUT_FILE"
 
 add_section "15. SYSTEM INFO"
 {
