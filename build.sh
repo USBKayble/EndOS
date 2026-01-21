@@ -39,6 +39,7 @@ echo "--> Cleaning up previous build artifacts..."
 sudo rm -rf "$WORK_DIR"
 rm -rf "$REPO_DIR"
 rm -rf ".pip_cache"
+rm -rf "iso/airootfs/var/cache/wheels"
 rm -f "iso/packages.x86_64"
 
 # Step 2: Clone dots-hyprland
