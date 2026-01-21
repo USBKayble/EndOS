@@ -418,12 +418,20 @@ echo "    Counting required packages..."
 REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
 echo "    Required packages: $REQUIRED_COUNT"
 
-# Download packages with pip for Python 3.12
+# Download packages with uv using Python 3.12
 echo "    Downloading packages for Python 3.12..."
-pip download --dest "$WHEELS_DIR" --no-deps --python-version 3.12 -r "$REQ_FILE" 2>&1 || {
+# Create a temporary Python 3.12 venv to download wheels
+TEMP_VENV="/tmp/endos-wheel-builder-$$"
+uv venv "$TEMP_VENV" -p 3.12 --quiet
+source "$TEMP_VENV/bin/activate"
+uv pip download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
     echo "    ERROR: Failed to download Python packages. Aborting."
+    deactivate
+    rm -rf "$TEMP_VENV"
     exit 1
 }
+deactivate
+rm -rf "$TEMP_VENV"
 
 
 # Check for tar.gz files that need building
