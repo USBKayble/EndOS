@@ -423,14 +423,11 @@ echo "    Downloading packages for Python 3.12..."
 # Create a temporary Python 3.12 venv to download wheels
 TEMP_VENV="/tmp/endos-wheel-builder-$$"
 uv venv "$TEMP_VENV" -p 3.12 --quiet
-source "$TEMP_VENV/bin/activate"
-pip download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
+"$TEMP_VENV/bin/pip" download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
     echo "    ERROR: Failed to download Python packages. Aborting."
-    deactivate
     rm -rf "$TEMP_VENV"
     exit 1
 }
-deactivate
 rm -rf "$TEMP_VENV"
 
 
