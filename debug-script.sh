@@ -19,25 +19,7 @@ echo "Generated: $(date)" >> "$OUTPUT_FILE"
 echo "Hostname: $(hostname)" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
-#==========================================
-# HOTFIX: Missing 'qs' wrapper
-#==========================================
-add_section "HOTFIX STATUS"
-if [ ! -f "/usr/local/bin/qs" ]; then
-    echo "Hotfix: 'qs' wrapper missing. Attempting to create..." | tee -a "$OUTPUT_FILE"
-    if [ -f "/usr/bin/quickshell" ]; then
-        sudo bash -c 'cat <<EOF > /usr/local/bin/qs
-#!/usr/bin/env bash
-exec quickshell "\$@"
-EOF
-chmod +x /usr/local/bin/qs'
-        echo "✓ 'qs' wrapper created successfully" | tee -a "$OUTPUT_FILE"
-    else
-        echo "✗ Error: /usr/bin/quickshell not found" | tee -a "$OUTPUT_FILE"
-    fi
-else
-    echo "✓ 'qs' wrapper already exists" | tee -a "$OUTPUT_FILE"
-fi
+# Note: Hotfix logic removed per user request. Diagnostics only.
 
 add_section "1. USER INFO"
 {
@@ -58,14 +40,31 @@ else
     echo "✗ Venv directory NOT FOUND" | tee -a "$OUTPUT_FILE"
 fi
 
-add_section "4. PYTHON PACKAGES IN VENV"
-if [ -f "$HOME/.local/state/quickshell/.venv/bin/pip" ]; then
-    echo "Installed packages:" | tee -a "$OUTPUT_FILE"
-    "$HOME/.local/state/quickshell/.venv/bin/pip" list 2>&1 | tee -a "$OUTPUT_FILE"
-    echo "" | tee -a "$OUTPUT_FILE"
-    echo "Package count: $("$HOME/.local/state/quickshell/.venv/bin/pip" list 2>/dev/null | wc -l)" | tee -a "$OUTPUT_FILE"
+add_section "4. VENV HEALTH CHECK"
+if [ -d "$HOME/.local/state/quickshell/.venv" ]; then
+    echo "Venv folder exists. Checking Python execution:" | tee -a "$OUTPUT_FILE"
+    if "$HOME/.local/state/quickshell/.venv/bin/python" --version >/dev/null 2>&1; then
+        echo "✓ Venv Python is executable: $("$HOME/.local/state/quickshell/.venv/bin/python" --version)" | tee -a "$OUTPUT_FILE"
+    else
+        echo "✗ Venv Python FAILED to execute" | tee -a "$OUTPUT_FILE"
+    fi
+
+    echo "Checking pyvenv.cfg:" | tee -a "$OUTPUT_FILE"
+    if [ -f "$HOME/.local/state/quickshell/.venv/pyvenv.cfg" ]; then
+        cat "$HOME/.local/state/quickshell/.venv/pyvenv.cfg" | tee -a "$OUTPUT_FILE"
+    else
+        echo "✗ pyvenv.cfg NOT FOUND" | tee -a "$OUTPUT_FILE"
+    fi
+
+    if [ -f "$HOME/.local/state/quickshell/.venv/bin/pip" ]; then
+        echo "✓ Venv pip found. Listing packages:" | tee -a "$OUTPUT_FILE"
+        "$HOME/.local/state/quickshell/.venv/bin/pip" list 2>&1 | tee -a "$OUTPUT_FILE"
+    else
+        echo "✗ Venv pip NOT FOUND. Checking site-packages directory:" | tee -a "$OUTPUT_FILE"
+        find "$HOME/.local/state/quickshell/.venv/lib/" -maxdepth 2 -name "site-packages" -type d | tee -a "$OUTPUT_FILE"
+    fi
 else
-    echo "✗ Venv pip not found" | tee -a "$OUTPUT_FILE"
+    echo "✗ Venv directory NOT FOUND" | tee -a "$OUTPUT_FILE"
 fi
 
 add_section "5. ENVIRONMENT VARIABLES"
@@ -77,22 +76,45 @@ add_section "5. ENVIRONMENT VARIABLES"
     echo "HYPRLAND_INSTANCE_SIGNATURE=$HYPRLAND_INSTANCE_SIGNATURE"
 } | tee -a "$OUTPUT_FILE"
 
-add_section "6. QUICKSHELL BINARY"
-if command -v quickshell >/dev/null 2>&1; then
-    echo "✓ Quickshell found: $(which quickshell)" | tee -a "$OUTPUT_FILE"
-    quickshell --version 2>&1 | tee -a "$OUTPUT_FILE"
+add_section "6. QS WRAPPER & QUICKSHELL BINARY"
+if [ -f "/usr/local/bin/qs" ]; then
+    echo "✓ Wrapper 'qs' found at /usr/local/bin/qs" | tee -a "$OUTPUT_FILE"
+    echo "Content of 'qs' wrapper:" | tee -a "$OUTPUT_FILE"
+    cat "/usr/local/bin/qs" | tee -a "$OUTPUT_FILE"
+    if [ -x "/usr/local/bin/qs" ]; then
+        echo "✓ 'qs' wrapper is executable" | tee -a "$OUTPUT_FILE"
+    else
+        echo "✗ 'qs' wrapper is NOT EXECUTABLE" | tee -a "$OUTPUT_FILE"
+    fi
 else
-    echo "✗ Quickshell NOT FOUND" | tee -a "$OUTPUT_FILE"
-    echo "Checking if package is installed:" | tee -a "$OUTPUT_FILE"
-    pacman -Q quickshell 2>&1 | tee -a "$OUTPUT_FILE"
+    echo "✗ Wrapper 'qs' NOT FOUND at /usr/local/bin/qs" | tee -a "$OUTPUT_FILE"
 fi
 
-add_section "7. QUICKSHELL CONFIG"
-if [ -d "$HOME/.config/quickshell" ]; then
-    echo "✓ Config directory exists" | tee -a "$OUTPUT_FILE"
-    ls -la "$HOME/.config/quickshell" | tee -a "$OUTPUT_FILE"
+if command -v quickshell >/dev/null 2>&1; then
+    echo "✓ Quickshell binary found: $(which quickshell)" | tee -a "$OUTPUT_FILE"
+    quickshell --version 2>&1 | tee -a "$OUTPUT_FILE"
 else
-    echo "✗ Config directory NOT FOUND" | tee -a "$OUTPUT_FILE"
+    echo "✗ Quickshell binary NOT FOUND" | tee -a "$OUTPUT_FILE"
+fi
+
+add_section "7. QUICKSHELL CONFIG VALIDATION"
+if [ -d "$HOME/.config/quickshell" ]; then
+    echo "✓ Config root exists: $HOME/.config/quickshell" | tee -a "$OUTPUT_FILE"
+    echo "Checking for 'ii' config (suggested by dots-hyprland):" | tee -a "$OUTPUT_FILE"
+    if [ -d "$HOME/.config/quickshell/ii" ]; then
+        echo "✓ 'ii' config directory exists" | tee -a "$OUTPUT_FILE"
+        if [ -f "$HOME/.config/quickshell/ii/shell.qml" ]; then
+            echo "✓ main shell.qml found in 'ii' config" | tee -a "$OUTPUT_FILE"
+        else
+            echo "✗ shell.qml NOT FOUND in 'ii' config" | tee -a "$OUTPUT_FILE"
+        fi
+    else
+        echo "✗ 'ii' config directory NOT FOUND" | tee -a "$OUTPUT_FILE"
+        echo "Directories in .config/quickshell:" | tee -a "$OUTPUT_FILE"
+        ls -F "$HOME/.config/quickshell" | tee -a "$OUTPUT_FILE"
+    fi
+else
+    echo "✗ Config root directory NOT FOUND" | tee -a "$OUTPUT_FILE"
 fi
 
 add_section "8. HYPRLAND ENV CONFIG"
