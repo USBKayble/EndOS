@@ -169,6 +169,70 @@ add_section "18. MANUAL QUICKSHELL START TEST"
 echo "Attempting to start quickshell manually..." | tee -a "$OUTPUT_FILE"
 timeout 5 quickshell 2>&1 | head -20 | tee -a "$OUTPUT_FILE"
 
+add_section "19. HOTFIX - VENV SERVICE DIAGNOSTICS"
+{
+    echo "Checking service logs with sudo..."
+    sudo journalctl -u setup-quickshell-venv.service --no-pager -n 100 2>&1 | tail -50
+    
+    echo ""
+    echo "Checking if service actually ran..."
+    sudo systemctl show setup-quickshell-venv.service | grep -E "ExecMainStatus|Result|ActiveState"
+    
+    echo ""
+    echo "Checking venv Python packages..."
+    if [ -f "$HOME/.local/state/quickshell/.venv/bin/python" ]; then
+        "$HOME/.local/state/quickshell/.venv/bin/python" -m pip list 2>&1 | head -30
+    else
+        echo "Venv Python not found"
+    fi
+} | tee -a "$OUTPUT_FILE"
+
+add_section "20. HOTFIX - MANUAL VENV SETUP"
+{
+    echo "Attempting manual venv setup..."
+    if [ ! -f "$HOME/.local/state/quickshell/.venv/bin/python" ] || \
+       [ "$("$HOME/.local/state/quickshell/.venv/bin/pip" list 2>/dev/null | wc -l)" -lt 10 ]; then
+        
+        echo "Running manual venv setup..."
+        cd "$HOME"
+        mkdir -p "$HOME/.local/state/quickshell"
+        
+        if command -v uv >/dev/null 2>&1; then
+            echo "Creating venv with uv..."
+            uv venv --prompt .venv "$HOME/.local/state/quickshell/.venv" -p 3.12 2>&1
+            
+            echo "Installing packages..."
+            source "$HOME/.local/state/quickshell/.venv/bin/activate"
+            uv pip install --no-index --find-links /var/cache/wheels \
+                -r "$HOME/dots-hyprland/sdata/uv/requirements.txt" 2>&1 | tail -20
+            deactivate
+            
+            echo "✓ Manual venv setup complete"
+            echo "Installed packages:"
+            "$HOME/.local/state/quickshell/.venv/bin/pip" list 2>&1
+        else
+            echo "✗ uv not found, cannot setup venv"
+        fi
+    else
+        echo "✓ Venv already has packages installed"
+    fi
+} | tee -a "$OUTPUT_FILE"
+
+add_section "21. HOTFIX - START QUICKSHELL"
+{
+    echo "Attempting to start quickshell with config..."
+    export ILLOGICAL_IMPULSE_VIRTUAL_ENV="$HOME/.local/state/quickshell/.venv"
+    
+    if [ -d "$HOME/.config/quickshell/ii" ]; then
+        echo "Starting quickshell with ii config..."
+        timeout 10 quickshell -c ii 2>&1 | head -30
+    else
+        echo "✗ ii config directory not found"
+        echo "Available configs:"
+        ls -la "$HOME/.config/quickshell/" 2>&1
+    fi
+} | tee -a "$OUTPUT_FILE"
+
 add_section "SUMMARY"
 {
     ISSUES=0
