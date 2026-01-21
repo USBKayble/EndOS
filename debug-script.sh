@@ -27,68 +27,7 @@ add_section "1. USER INFO"
     echo "Shell: $SHELL"
 } | tee -a "$OUTPUT_FILE"
 
-add_section "2. HOTFIX - FORCE START SERVICE"
-{
-    echo "Current status:"
-    sudo systemctl status setup-quickshell-venv.service --no-pager
-    
-    echo ""
-    echo "Attempting to force start service..."
-    sudo systemctl start setup-quickshell-venv.service
-    sleep 2
-    
-    echo "Status after start attempt:"
-    sudo systemctl status setup-quickshell-venv.service --no-pager
-    
-    echo ""
-    echo "Logs after start attempt:"
-    sudo journalctl -u setup-quickshell-venv.service --no-pager -n 20
-} | tee -a "$OUTPUT_FILE"
-
-add_section "3. HOTFIX - MANUAL EXECUTION TEST"
-{
-    echo "Attempting to run setup logic manually (if service failed)..."
-    
-    if ! systemctl is-active --quiet setup-quickshell-venv.service; then
-        TARGET_DIR="/home/liveuser/.local/state/quickshell"
-        mkdir -p "$TARGET_DIR"
-        
-        echo "1. Checking uv..."
-        if command -v uv >/dev/null 2>&1; then
-            echo "uv found at $(which uv)"
-            
-            echo "2. Creating venv..."
-            # Try finding available python version
-            PY_VER="3.12"
-            if ! command -v python3.12 >/dev/null 2>&1; then
-                echo "Python 3.12 not found, checking versions..."
-                ls -1 /usr/bin/python3*
-                # fallback to default python3
-                PY_VER="python3"
-            fi
-            
-            echo "Using Python: $PY_VER"
-            uv venv --prompt .venv "$TARGET_DIR/.venv" -p $PY_VER 2>&1
-            
-            echo "3. Installing packages..."
-            if [ -f "$TARGET_DIR/.venv/bin/activate" ]; then
-                source "$TARGET_DIR/.venv/bin/activate"
-                uv pip install --no-index --find-links /var/cache/wheels \
-                    -r "/home/liveuser/dots-hyprland/sdata/uv/requirements.txt" 2>&1
-                deactivate
-                echo "Manual setup finished."
-            else
-                echo "Failed to create venv, cannot install packages."
-            fi
-        else
-            echo "uv not found!"
-        fi
-    else
-        echo "Service started successfully, skipping manual fix."
-    fi
-} | tee -a "$OUTPUT_FILE"
-
-add_section "4. VENV SERVICE STATUS"
+add_section "2. VENV SERVICE STATUS"
 systemctl status setup-quickshell-venv.service --no-pager | tee -a "$OUTPUT_FILE"
 
 add_section "3. VENV DIRECTORY"
