@@ -23,6 +23,7 @@ echo "" >> "$OUTPUT_FILE"
 # HOTFIX: Missing 'qs' wrapper
 #==========================================
 if ! command -v qs >/dev/null 2>&1; then
+    add_section "HOTFIX: APPLYING QS WRAPPER"
     echo "Applying Hotfix: Creating 'qs' wrapper..." | tee -a "$OUTPUT_FILE"
     if [ -f "/usr/bin/quickshell" ]; then
         sudo bash -c 'cat <<EOF > /usr/local/bin/qs
