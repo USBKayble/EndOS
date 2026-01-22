@@ -89,6 +89,15 @@ jobs:
           echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
           pacman -Sy
 
+      - name: Install latest uv
+        run: |
+          # Install the latest version of uv directly from GitHub releases
+          # The version from pacman might be too old for new features like --python
+          curl -L -o uv.tar.gz https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz
+          tar -zxvf uv.tar.gz
+          mv uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/
+          echo "Installed uv version: $(uv --version)"
+
       - name: Create build user
         run: |
           # Create a non-root user for makepkg (AUR builds)
