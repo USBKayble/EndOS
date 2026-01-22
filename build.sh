@@ -41,6 +41,7 @@ rm -rf "$REPO_DIR"
 rm -rf ".pip_cache"
 rm -rf "iso/airootfs/var/cache/wheels"
 rm -f "iso/packages.x86_64"
+rm -f "iso/requirements.txt"
 
 # Step 2: Clone dots-hyprland
 echo "--> Cloning dots-hyprland..."
@@ -420,15 +421,11 @@ echo "    Required packages: $REQUIRED_COUNT"
 
 # Download packages with uv using Python 3.12
 echo "    Downloading packages for Python 3.12..."
-# Create a temporary Python 3.12 venv to download wheels
-TEMP_VENV="/tmp/endos-wheel-builder-$$"
-uv venv "$TEMP_VENV" -p 3.12 --quiet
-"$TEMP_VENV/bin/pip" download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
+# Use uv directly with the --python flag to avoid venv activation issues
+uv pip download --python 3.12 --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
     echo "    ERROR: Failed to download Python packages. Aborting."
-    rm -rf "$TEMP_VENV"
     exit 1
 }
-rm -rf "$TEMP_VENV"
 
 
 # Check for tar.gz files that need building
@@ -438,20 +435,15 @@ TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$TARBALL_COUNT" -gt 0 ]; then
     echo "    Found $TARBALL_COUNT source distributions that need building..."
     
-    # Create a Python 3.12 venv for building wheels
-    echo "    Creating Python 3.12 venv for building..."
-    BUILD_VENV="/tmp/endos-wheel-builder-build-$$"
-    uv venv "$BUILD_VENV" -p 3.12 --quiet
-    
-    # Build each tar.gz into a wheel
+    # Build each tar.gz into a wheel using uv directly
     for tarball in "$WHEELS_DIR"/*.tar.gz; do
         [ -e "$tarball" ] || continue
         
         PACKAGE_NAME=$(basename "$tarball" .tar.gz | sed -E 's/-[0-9].*//')
         echo "      Building wheel for: $PACKAGE_NAME"
         
-        # Try to build the wheel using venv's pip
-        if "$BUILD_VENV/bin/pip" wheel --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
+        # Try to build the wheel using uv pip wheel
+        if uv pip wheel --python 3.12 --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
             echo "        ✓ Successfully built $PACKAGE_NAME"
             # Remove the tar.gz if wheel was created successfully
             # Check if a corresponding .whl file exists (try both hyphen and underscore versions)
@@ -466,8 +458,6 @@ if [ "$TARBALL_COUNT" -gt 0 ]; then
             echo "        Keeping source distribution for manual installation"
         fi
     done
-    
-    rm -rf "$BUILD_VENV"
     
     # Recount tarballs after building
     REMAINING_TARBALLS=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
