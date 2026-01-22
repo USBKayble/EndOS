@@ -494,20 +494,22 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
     # Detailed check for missing packages (optimized)
     MISSING_PACKAGES=""
     # List all wheel and tarball files once to avoid repeated `ls` calls in the loop
+    shopt -s nullglob
     WHEEL_FILES=$(ls "$WHEELS_DIR"/*.whl "$WHEELS_DIR"/*.tar.gz 2>/dev/null)
+    shopt -u nullglob
 
     while IFS= read -r line; do
         # Skip comments and empty lines
         [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
         
-        # Extract package name (before ==, >=, etc.) and normalize it
+        # Extract package name (before ==, >=, etc.) and create both hyphen and underscore variants
         pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_.-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-        pkg_normalized=$(echo "$pkg_base" | tr '_' '-')
-        
-        # Check if a file matching the normalized package name exists.
-        # We search for "packagename-" or "package_name-" to ensure we match the start of a filename.
-        # The grep is case-insensitive (-i) and quiet (-q).
-        if ! echo "$WHEEL_FILES" | grep -q -i "/${pkg_normalized}-"; then
+        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
+        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
+
+        # Check if a file matching either the hyphenated or underscored package name exists.
+        # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
+        if ! echo "$WHEEL_FILES" | grep -q -i -e "/${pkg_hyphen}-" -e "/${pkg_underscore}-"; then
             MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
         fi
     done < "$REQ_FILE"
