@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
-# Wrapper for quickshell to permit using 'qs' command as expected by dots-hyprland
+# Resolve venv path: use env var if set, otherwise default
+VENV_PATH="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}"
+
+# Activate the virtual environment if it exists
+if [ -f "$VENV_PATH/bin/activate" ]; then
+    source "$VENV_PATH/bin/activate"
+fi
+
 exec quickshell "$@"

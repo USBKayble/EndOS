@@ -1,6 +1,8 @@
 # Force all files to be checkout out with LF line endings.
 # This results in consistent behavior across Windows, Mac, and Linux.
-* text=auto eol=lf
+* text=auto
+iso/airootfs/usr/local/bin/qs text eol=lf
+ eol=lf
 
 # Explicitly ensure shell scripts always have LF
 *.sh text eol=lf
