@@ -7,7 +7,7 @@ Before=display-manager.service
 Type=oneshot
 User=liveuser
 Environment="HOME=/home/liveuser"
-ExecStart=/usr/bin/bash -c 'mkdir -p /home/liveuser/.local/state/quickshell && uv venv --prompt .venv /home/liveuser/.local/state/quickshell/.venv -p 3.12 && source /home/liveuser/.local/state/quickshell/.venv/bin/activate && uv pip install --no-index --find-links /var/cache/wheels -r /home/liveuser/dots-hyprland/sdata/uv/requirements.txt && deactivate'
+ExecStart=/usr/bin/bash -c 'mkdir -p /home/liveuser/.local/state/quickshell && uv venv --prompt .venv /home/liveuser/.local/state/quickshell/.venv -p /usr/bin/python3 --system-site-packages && source /home/liveuser/.local/state/quickshell/.venv/bin/activate && uv pip install --no-index --find-links /var/cache/wheels -r /home/liveuser/dots-hyprland/sdata/uv/requirements.txt && deactivate'
 RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
