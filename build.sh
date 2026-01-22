@@ -491,22 +491,23 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
     echo "    ERROR: Missing packages! Expected $REQUIRED_COUNT, got $TOTAL_PACKAGES"
     echo "    Checking which packages are missing..."
     
-    # Detailed check for missing packages
+    # Detailed check for missing packages (optimized)
     MISSING_PACKAGES=""
+    # List all wheel and tarball files once to avoid repeated `ls` calls in the loop
+    WHEEL_FILES=$(ls "$WHEELS_DIR"/*.whl "$WHEELS_DIR"/*.tar.gz 2>/dev/null)
+
     while IFS= read -r line; do
         # Skip comments and empty lines
         [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
         
-        # Extract package name (before ==, >=, etc.)
-        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
-        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
+        # Extract package name (before ==, >=, etc.) and normalize it
+        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_.-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
+        pkg_normalized=$(echo "$pkg_base" | tr '_' '-')
         
-        # Check if package exists in any form
-        if ! ls "$WHEELS_DIR"/${pkg_underscore}* >/dev/null 2>&1 && \
-           ! ls "$WHEELS_DIR"/*${pkg_underscore}* >/dev/null 2>&1 && \
-           ! ls "$WHEELS_DIR"/${pkg_hyphen}* >/dev/null 2>&1 && \
-           ! ls "$WHEELS_DIR"/*${pkg_hyphen}* >/dev/null 2>&1; then
+        # Check if a file matching the normalized package name exists.
+        # We search for "packagename-" or "package_name-" to ensure we match the start of a filename.
+        # The grep is case-insensitive (-i) and quiet (-q).
+        if ! echo "$WHEEL_FILES" | grep -q -i "/${pkg_normalized}-"; then
             MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
         fi
     done < "$REQ_FILE"
