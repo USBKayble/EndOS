@@ -16,13 +16,21 @@ log() {
     echo "User: $(whoami)"
 } > "$OUTPUT_FILE"
 
-# 0. Hotfix removed - wrapper is handled by ISO build
+# 0. Hotfix Status
+log "Hotfix Status"
+echo "No hotfixes active. Standard debugging mode." | tee -a "$OUTPUT_FILE"
 
-
-# 1. Check Service & Venv
-log "Venv Service & Directory"
-# Service is deleted, checking path directly
+# 1. Check Service & Venv & Binary
+log "Venv & Binary Check"
+echo "--- Venv Bin Directory ---" | tee -a "$OUTPUT_FILE"
 ls -la "/usr/share/quickshell/venv/bin" | tee -a "$OUTPUT_FILE"
+
+echo "--- Venv Permissions ---" | tee -a "$OUTPUT_FILE"
+ls -ld "/usr/share/quickshell/venv" | tee -a "$OUTPUT_FILE"
+
+echo "--- Quickshell Binary ---" | tee -a "$OUTPUT_FILE"
+which quickshell | tee -a "$OUTPUT_FILE"
+quickshell --version 2>&1 | tee -a "$OUTPUT_FILE"
 
 # 2. Check Wrapper Script
 log "Wrapper Script Content (/usr/local/bin/qs)"
@@ -34,7 +42,8 @@ fi
 
 # 3. Environment Check
 log "Environment Variables"
-grep "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "$HOME/.config/hypr/hyprland/env.conf" | tee -a "$OUTPUT_FILE"
+grep "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "$HOME/.config/hypr/hyprland/env.conf" 2>/dev/null | tee -a "$OUTPUT_FILE"
+env | grep -E "PYTHON|VIRTUAL_ENV|PATH" | tee -a "$OUTPUT_FILE"
 
 # 4. CRITICAL: Runtime Test
 log "TEST: Running 'qs -c ii'"
@@ -50,10 +59,43 @@ echo "--- Output Log ---" | tee -a "$OUTPUT_FILE"
 cat /tmp/qs-output.log | tee -a "$OUTPUT_FILE"
 
 # 5. Check Python Interior
-log "TEST: Python Module Path check inside Wrapper"
-# We invoke python through the wrapper logic to see path
+log "TEST: Python Module & Import Check"
+# We invoke python through the wrapper logic to see path and check imports
 VENV_VAR="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-/usr/share/quickshell/venv}"
+
+echo "--- Python Path ---" | tee -a "$OUTPUT_FILE"
 bash -c "source $VENV_VAR/bin/activate && python -c 'import sys; print(sys.path)'" 2>&1 | tee -a "$OUTPUT_FILE"
+
+echo "--- Installed Packages (pip list) ---" | tee -a "$OUTPUT_FILE"
+bash -c "source $VENV_VAR/bin/activate && pip list" 2>&1 | tee -a "$OUTPUT_FILE"
+
+echo "--- Critical Imports Check ---" | tee -a "$OUTPUT_FILE"
+# Check for key libraries that might be missing or broken
+bash -c "source $VENV_VAR/bin/activate && python -c '
+try:
+    import pywayland
+    print(\"OK: pywayland\")
+except ImportError as e:
+    print(f\"FAIL: pywayland - {e}\")
+
+try:
+    import materialyoucolor
+    print(\"OK: materialyoucolor\")
+except ImportError as e:
+    print(f\"FAIL: materialyoucolor - {e}\")
+
+try:
+    import PIL
+    print(\"OK: PIL (pillow)\")
+except ImportError as e:
+    print(f\"FAIL: PIL - {e}\")
+
+try:
+    import cv2
+    print(\"OK: cv2 (opencv)\")
+except ImportError as e:
+    print(f\"FAIL: cv2 - {e}\")
+'" 2>&1 | tee -a "$OUTPUT_FILE"
 
 # Upload
 log "Upload"
