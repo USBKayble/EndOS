@@ -147,6 +147,16 @@ if [ -d "$REPO_DIR/dots/.config" ]; then
     echo "    Copying .config files..."
     rsync -a "$REPO_DIR/dots/.config/" "$SKEL_CONFIG/"
     rsync -a "$REPO_DIR/dots/.config/" "$LIVE_CONFIG/"
+
+    # PATCH: Fix quickshell venv path for Live ISO environment
+    # The dotfiles point to ~/.local/state/quickshell/.venv, but the Live ISO has it pre-built in /usr/share/quickshell/venv
+    echo "    Patching Live User config for ISO venv path..."
+    LIVE_ENV_CONF="$LIVE_CONFIG/hypr/hyprland/env.conf"
+    if [ -f "$LIVE_ENV_CONF" ]; then
+        sed -i 's|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV,.*|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV, /usr/share/quickshell/venv|g' "$LIVE_ENV_CONF"
+    else
+        echo "    WARNING: Could not find env.conf to patch at $LIVE_ENV_CONF"
+    fi
 fi
 
 if [ -d "$REPO_DIR/dots/.local" ]; then
