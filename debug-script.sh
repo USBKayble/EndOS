@@ -31,6 +31,8 @@ ls -ld "/usr/share/quickshell/venv" | tee -a "$OUTPUT_FILE"
 echo "--- Quickshell Binary ---" | tee -a "$OUTPUT_FILE"
 which quickshell | tee -a "$OUTPUT_FILE"
 quickshell --version 2>&1 | tee -a "$OUTPUT_FILE"
+pacman -Qi quickshell | tee -a "$OUTPUT_FILE"
+pacman -Qi polkit-qt6 | tee -a "$OUTPUT_FILE"
 
 # 2. Check Wrapper Script
 log "Wrapper Script Content (/usr/local/bin/qs)"
@@ -72,29 +74,28 @@ bash -c "source $VENV_VAR/bin/activate && pip list" 2>&1 | tee -a "$OUTPUT_FILE"
 echo "--- Critical Imports Check ---" | tee -a "$OUTPUT_FILE"
 # Check for key libraries that might be missing or broken
 bash -c "source $VENV_VAR/bin/activate && python -c '
-try:
-    import pywayland
-    print(\"OK: pywayland\")
-except ImportError as e:
-    print(f\"FAIL: pywayland - {e}\")
+import sys
+import traceback
 
-try:
-    import materialyoucolor
-    print(\"OK: materialyoucolor\")
-except ImportError as e:
-    print(f\"FAIL: materialyoucolor - {e}\")
+def check_import(name):
+    print(f\"--- Checking {name} ---\")
+    try:
+        mod = __import__(name)
+        print(f\"OK: {name} path: {mod.__file__}\")
+        if name == \"numpy\":
+            print(f\"numpy version: {mod.__version__}\")
+    except ImportError:
+        print(f\"FAIL: {name}\")
+        traceback.print_exc()
+    except Exception:
+        print(f\"CRASH: {name}\")
+        traceback.print_exc()
 
-try:
-    import PIL
-    print(\"OK: PIL (pillow)\")
-except ImportError as e:
-    print(f\"FAIL: PIL - {e}\")
-
-try:
-    import cv2
-    print(\"OK: cv2 (opencv)\")
-except ImportError as e:
-    print(f\"FAIL: cv2 - {e}\")
+check_import(\"pywayland\")
+check_import(\"materialyoucolor\")
+check_import(\"PIL\")
+check_import(\"numpy\")
+check_import(\"cv2\")
 '" 2>&1 | tee -a "$OUTPUT_FILE"
 
 # Upload
