@@ -112,6 +112,7 @@ xdg-utils
 xfsprogs
 xl2tpd
 zsh
+quickshell
 python-pip
 polkit-qt6
 openblas
