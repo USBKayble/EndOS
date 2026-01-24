@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test script to verify Python 3.12 wheel download works correctly
+# Test script to verify Python 3.14 wheel download works correctly
 # This simulates the wheel download portion of build.sh without building the full ISO
 
 set -e
@@ -51,10 +51,13 @@ REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
 echo "Required packages: $REQUIRED_COUNT"
 echo ""
 
-# Download packages with uv using Python 3.12
-echo "Downloading packages for Python 3.12..."
+# Download packages with uv using Python 3.14
+echo "Downloading packages for Python 3.14..."
 TEMP_VENV="/tmp/endos-wheel-builder-$$"
-uv venv "$TEMP_VENV" -p 3.12 --quiet
+uv venv "$TEMP_VENV" -p 3.14 --quiet
+
+# uv doesn't include pip by default, so we must install it
+uv pip install pip --python "$TEMP_VENV/bin/python" --quiet
 
 echo "Python version in venv: $($TEMP_VENV/bin/python --version)"
 echo "Pip version: $($TEMP_VENV/bin/pip --version)"
@@ -76,10 +79,13 @@ if [ "$TARBALL_COUNT" -gt 0 ]; then
     echo "Found $TARBALL_COUNT source distributions that need building..."
     echo ""
     
-    # Create a Python 3.12 venv for building wheels
-    echo "Creating Python 3.12 venv for building..."
+    # Create a Python 3.14 venv for building wheels
+    echo "Creating Python 3.14 venv for building..."
     BUILD_VENV="/tmp/endos-wheel-builder-build-$$"
-    uv venv "$BUILD_VENV" -p 3.12 --quiet
+    uv venv "$BUILD_VENV" -p 3.14 --quiet
+    
+    # Install pip in build venv
+    uv pip install pip --python "$BUILD_VENV/bin/python" --quiet
     
     # Build each tar.gz into a wheel
     for tarball in "$WHEELS_DIR"/*.tar.gz; do
@@ -136,27 +142,27 @@ if [ "$WHEEL_COUNT" -gt 0 ]; then
     echo ""
 fi
 
-# Check for Python 3.14 wheels (should be NONE)
-CP314_COUNT=$(ls "$WHEELS_DIR"/*.whl 2>/dev/null | grep -c "cp314" || true)
+# Check for Python 3.12 wheels (should be NONE)
 CP312_COUNT=$(ls "$WHEELS_DIR"/*.whl 2>/dev/null | grep -c "cp312" || true)
+CP314_COUNT=$(ls "$WHEELS_DIR"/*.whl 2>/dev/null | grep -c "cp314" || true)
 
 echo "Detailed breakdown:"
-echo "  Python 3.12 (cp312) wheels: $CP312_COUNT"
 echo "  Python 3.14 (cp314) wheels: $CP314_COUNT"
+echo "  Python 3.12 (cp312) wheels: $CP312_COUNT"
 echo ""
 
 # Test result
-if [ "$CP314_COUNT" -gt 0 ]; then
-    echo "❌ FAILED: Found Python 3.14 wheels!"
+if [ "$CP312_COUNT" -gt 0 ]; then
+    echo "❌ FAILED: Found Python 3.12 wheels!"
     echo ""
-    echo "Python 3.14 wheels found:"
-    ls "$WHEELS_DIR"/*.whl 2>/dev/null | grep "cp314"
+    echo "Python 3.12 wheels found:"
+    ls "$WHEELS_DIR"/*.whl 2>/dev/null | grep "cp312"
     EXIT_CODE=1
-elif [ "$CP312_COUNT" -eq 0 ]; then
-    echo "❌ FAILED: No Python 3.12 wheels found!"
+elif [ "$CP314_COUNT" -eq 0 ]; then
+    echo "❌ FAILED: No Python 3.14 wheels found!"
     EXIT_CODE=1
 else
-    echo "✅ SUCCESS: All wheels are Python 3.12!"
+    echo "✅ SUCCESS: All wheels are Python 3.14!"
     EXIT_CODE=0
 fi
 

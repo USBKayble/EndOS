@@ -126,13 +126,11 @@ mv "${REQ_FILE}.tmp" "$REQ_FILE"
 # Step 4: Distribute Dotfiles
 echo "--> Distributing dotfiles (incremental)..."
 TARGET_SKEL="${ISO_DIR}/airootfs/etc/skel/dots-hyprland"
-TARGET_ROOT="${ISO_DIR}/airootfs/root/dots-hyprland"
 TARGET_LIVE="${ISO_DIR}/airootfs/home/liveuser/dots-hyprland"
 
-mkdir -p "$TARGET_SKEL" "$TARGET_ROOT" "$TARGET_LIVE"
+mkdir -p "$TARGET_SKEL" "$TARGET_LIVE"
 # Use rsync to only copy changed files
 rsync -a --delete "$REPO_DIR/" "$TARGET_SKEL/"
-rsync -a --delete "$REPO_DIR/" "$TARGET_ROOT/"
 rsync -a --delete "$REPO_DIR/" "$TARGET_LIVE/"
 
 # Step 4b: Bake dotfile configs at build time (for faster first boot)
@@ -272,7 +270,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         echo "    ========================================"
         echo "    Attempting to build..."
         # Ensure base-devel and common build dependencies are present
-        sudo pacman -S --needed --noconfirm base-devel fontforge python-fonttools
+        sudo pacman -S --needed --noconfirm base-devel fontforge python-fonttools polkit-qt6
         
         # Start a sudo keepalive in the background so we don't timeout during long builds
         echo "    Starting sudo keepalive for long builds..."
@@ -358,31 +356,9 @@ else
 fi
 
 # Sync packages to airootfs and generate database
-echo "    Syncing local packages to ISO..."
-if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
-    echo "    Copying packages to ISO repository..."
-    if ! cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_DIR/" 2>&1; then
-        echo "    ERROR: Failed to copy packages to ISO repository"
-        exit 1
-    fi
-    
-    # Remove old database files to prevent duplicate entries
-    echo "    Cleaning old package database..."
-    rm -f "$LOCAL_REPO_DIR/local_repo.db"*
-    rm -f "$LOCAL_REPO_DIR/local_repo.files"*
-    
-    # Generate fresh database from all packages
-    echo "    Generating package database..."
-    if ! repo-add -n -R "$LOCAL_REPO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_DIR"/*.pkg.tar.zst; then
-        echo "    ERROR: Failed to generate package database"
-        exit 1
-    fi
-    
-    PKG_COUNT=$(ls "$LOCAL_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l)
-    echo "    ✓ $PKG_COUNT packages synced with database"
-else
-    echo "    WARNING: No packages found in $HOST_REPO_DIR"
-fi
+echo "    Skipping sync of local packages to ISO (save space)..."
+# We do NOT copy the .pkg.tar.zst files to the ISO to save usage.
+# The packages are already installed in the rootfs.
 
 # Clean up temp db if it was created
 [ -d "${TEMP_DB_PATH:-}" ] && sudo rm -rf "$TEMP_DB_PATH"
@@ -418,11 +394,14 @@ echo "    Counting required packages..."
 REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
 echo "    Required packages: $REQUIRED_COUNT"
 
-# Download packages with uv using Python 3.12
-echo "    Downloading packages for Python 3.12..."
-# Create a temporary Python 3.12 venv to download wheels
+# Download packages with uv using Python 3.14
+echo "    Downloading packages for Python 3.14..."
+# Create a temporary Python 3.14 venv to download wheels
 TEMP_VENV="/tmp/endos-wheel-builder-$$"
-uv venv "$TEMP_VENV" -p 3.12 --quiet
+uv venv "$TEMP_VENV" -p 3.14 --quiet
+# uv doesn't include pip by default, so we must install it
+uv pip install pip --python "$TEMP_VENV/bin/python" --quiet
+
 "$TEMP_VENV/bin/pip" download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
     echo "    ERROR: Failed to download Python packages. Aborting."
     rm -rf "$TEMP_VENV"
@@ -438,10 +417,13 @@ TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$TARBALL_COUNT" -gt 0 ]; then
     echo "    Found $TARBALL_COUNT source distributions that need building..."
     
-    # Create a Python 3.12 venv for building wheels
-    echo "    Creating Python 3.12 venv for building..."
+    # Create a Python 3.14 venv for building wheels
+    echo "    Creating Python 3.14 venv for building..."
     BUILD_VENV="/tmp/endos-wheel-builder-build-$$"
-    uv venv "$BUILD_VENV" -p 3.12 --quiet
+    uv venv "$BUILD_VENV" -p 3.14 --quiet
+
+    # Install pip in build venv
+    uv pip install pip --python "$BUILD_VENV/bin/python" --quiet
     
     # Build each tar.gz into a wheel
     for tarball in "$WHEELS_DIR"/*.tar.gz; do

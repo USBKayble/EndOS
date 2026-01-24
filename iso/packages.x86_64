@@ -144,9 +144,11 @@ plasma-nm
 playerctl
 plymouth
 polkit-kde-agent
+polkit-qt6
 ppp
 pptpclient
 pv
+python-pip
 qemu-guest-agent
 qt6-5compat
 qt6-base

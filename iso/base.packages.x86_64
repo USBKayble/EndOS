@@ -113,6 +113,8 @@ xfsprogs
 xl2tpd
 zsh
 quickshell
+python-pip
+polkit-qt6
 
 # Login manager (fallback)
 greetd

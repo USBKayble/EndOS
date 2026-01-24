@@ -16,33 +16,13 @@ log() {
     echo "User: $(whoami)"
 } > "$OUTPUT_FILE"
 
-# 0. HOTFIX: Apply qs wrapper fix
-log "APPLYING HOTFIX"
-echo "Overwriting /usr/local/bin/qs with corrected content..." | tee -a "$OUTPUT_FILE"
+# 0. Hotfix removed - wrapper is handled by ISO build
 
-# using cat + heredoc to write the file, ensuring LF endings
-sudo bash -c "cat > /usr/local/bin/qs" << 'EOF'
-#!/usr/bin/env bash
-# Resolve venv path: use env var if set, otherwise default
-VENV_PATH="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}"
-
-# Activate the virtual environment if it exists
-if [ -f "$VENV_PATH/bin/activate" ]; then
-    source "$VENV_PATH/bin/activate"
-fi
-
-exec quickshell "$@"
-EOF
-
-echo "Fixing permissions..." | tee -a "$OUTPUT_FILE"
-sudo chmod +x /usr/local/bin/qs
-ls -l /usr/local/bin/qs | tee -a "$OUTPUT_FILE"
 
 # 1. Check Service & Venv
 log "Venv Service & Directory"
-systemctl status setup-quickshell-venv.service --no-pager | tee -a "$OUTPUT_FILE"
-echo "" | tee -a "$OUTPUT_FILE"
-ls -la "$HOME/.local/state/quickshell/.venv/bin" | tee -a "$OUTPUT_FILE"
+# Service is deleted, checking path directly
+ls -la "/usr/share/quickshell/venv/bin" | tee -a "$OUTPUT_FILE"
 
 # 2. Check Wrapper Script
 log "Wrapper Script Content (/usr/local/bin/qs)"
@@ -72,7 +52,7 @@ cat /tmp/qs-output.log | tee -a "$OUTPUT_FILE"
 # 5. Check Python Interior
 log "TEST: Python Module Path check inside Wrapper"
 # We invoke python through the wrapper logic to see path
-VENV_VAR="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}"
+VENV_VAR="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-/usr/share/quickshell/venv}"
 bash -c "source $VENV_VAR/bin/activate && python -c 'import sys; print(sys.path)'" 2>&1 | tee -a "$OUTPUT_FILE"
 
 # Upload

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Resolve venv path: use env var if set, otherwise default
-VENV_PATH="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}"
+VENV_PATH="${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-/usr/share/quickshell/venv}"
 
 # Activate the virtual environment if it exists
 if [ -f "$VENV_PATH/bin/activate" ]; then

@@ -47,8 +47,8 @@ export IGNORE_OUTDATE_CHECK=true
 echo "[$0]: Setting up quickshell Python environment..."
 VENV_DIR="${HOME}/.local/state/quickshell/.venv"
 mkdir -p "$(dirname "$VENV_DIR")"
-if [[ ! -d "$VENV_DIR" ]] && command -v python3 &>/dev/null; then
-    python3 -m venv --system-site-packages "$VENV_DIR" 2>/dev/null || true
+if [[ ! -d "$VENV_DIR" ]] && command -v python3.14 &>/dev/null; then
+    python3.14 -m venv --system-site-packages "$VENV_DIR" 2>/dev/null || true
     if [[ -f "$VENV_DIR/bin/activate" ]]; then
         source "$VENV_DIR/bin/activate"
         REQUIREMENTS="${DOTS_DIR}/sdata/uv/requirements.txt"
@@ -59,7 +59,7 @@ if [[ ! -d "$VENV_DIR" ]] && command -v python3 &>/dev/null; then
         echo "[$0]: Quickshell venv created at $VENV_DIR"
     fi
 else
-    echo "[$0]: Quickshell venv already exists or python3 not available"
+    echo "[$0]: Quickshell venv already exists or python3.14 not available"
 fi
 
 # Setup user groups (quick operation)
