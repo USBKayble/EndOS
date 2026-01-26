@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=EndOS Installer
+Comment=Install EndOS to your system
+Exec=/usr/local/bin/endos-installer
+Icon=system-software-install
+Terminal=false
+Type=Application
+Categories=System;

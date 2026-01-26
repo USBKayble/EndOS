@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# EndOS Installation Wizard Launcher
+# This script launches the Quickshell-based installer
+
+# Check if running as root
+if [[ $EUID -eq 0 ]]; then
+    echo "Error: Do not run the installer as root. It will request privileges when needed."
+    exit 1
+fi
+
+# Set installer directory
+INSTALLER_DIR="/usr/share/endos-installer"
+INSTALLER_QML="$INSTALLER_DIR/installer.qml"
+
+# Check if installer files exist
+if [[ ! -f "$INSTALLER_QML" ]]; then
+    echo "Error: Installer files not found at $INSTALLER_DIR"
+    exit 1
+fi
+
+# Check if Quickshell is available
+if ! command -v qs &> /dev/null; then
+    echo "Error: Quickshell (qs) is not installed"
+    exit 1
+fi
+
+# Parse arguments
+if [ "$1" = "--dry-run" ]; then
+    export DRY_RUN=true
+fi
+
+# Launch the installer
+exec qs -p "$INSTALLER_QML"

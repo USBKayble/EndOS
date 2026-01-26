@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Auto-launch EndOS Installer on first boot
+
+# Only run if this is the live user and installer hasn't been dismissed
+if [ "$USER" = "liveuser" ] && [ ! -f ~/.config/installer-dismissed ]; then
+    # Wait for Hyprland to fully start
+    sleep 3
+    
+    # Launch installer
+    /usr/local/bin/endos-installer &
+fi
