@@ -71,6 +71,19 @@ hyprlock
 hyprpicker
 hyprshot
 hyprsunset
+illogical-impulse-audio
+illogical-impulse-backlight
+illogical-impulse-basic
+illogical-impulse-fonts-themes
+illogical-impulse-hyprland
+illogical-impulse-kde
+illogical-impulse-microtex-git
+illogical-impulse-portal
+illogical-impulse-python
+illogical-impulse-quickshell-git
+illogical-impulse-screencapture
+illogical-impulse-toolkit
+illogical-impulse-widgets
 imagemagick
 intel-ucode
 iw
@@ -83,6 +96,7 @@ kirigami
 kitty
 kitty-terminfo
 konsole
+lapack
 ldns
 less
 lib32-python311-bin
@@ -127,6 +141,7 @@ nmap
 ntfs-3g
 nvme-cli
 obs-studio
+openblas
 openbsd-netcat
 openconnect
 open-iscsi
@@ -164,7 +179,6 @@ qt6-tools
 qt6-translations
 qt6-virtualkeyboard
 qt6-wayland
-quickshell
 refind
 reflector
 ripgrep

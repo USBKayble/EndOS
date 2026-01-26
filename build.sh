@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# EndOS Build Script
+# 
+# This script builds a custom Arch Linux ISO with Hyprland desktop environment.
+# 
+# IMPORTANT: Package Isolation
+# - All AUR packages are built in an isolated chroot environment using mkarchroot/makechrootpkg
+# - Python wheels are built inside the chroot to avoid polluting the host system
+# - The build chroot is located at build_chroot/ and can be removed after building
+#
 # Exit on error, but allow pipes and subshells to handle their own errors
 set -e
 
@@ -15,12 +24,35 @@ REPO_DIR="dots-hyprland"
 ISO_DIR="iso"
 WORK_DIR="work"
 OUT_DIR="out"
+CHROOT_DIR="$SCRIPT_DIR/build_chroot"
 
 LOG_FILE="build.log"
 # Redirect everything to log file AND stdout
 exec > >(tee "$LOG_FILE") 2>&1
 
 echo "=== Starting EndOS Build Process ==="
+
+# Check for and install required build tools
+echo "--> Checking for required build tools..."
+MISSING_TOOLS=()
+
+if ! command -v mkarchroot >/dev/null 2>&1 || ! command -v makechrootpkg >/dev/null 2>&1; then
+    MISSING_TOOLS+=("devtools")
+fi
+
+if ! command -v mkarchiso >/dev/null 2>&1; then
+    MISSING_TOOLS+=("archiso")
+fi
+
+if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
+    echo "    Missing required packages: ${MISSING_TOOLS[*]}"
+    echo "    Installing with pacman..."
+    sudo pacman -S --needed --noconfirm "${MISSING_TOOLS[@]}" || {
+        echo "    ERROR: Failed to install required tools"
+        exit 1
+    }
+    echo "    ✓ Required tools installed"
+fi
 
 # Official Package Name Changes (replaces name in the list)
 declare -A OFFICIAL_ALIASES=(
@@ -45,6 +77,9 @@ rm -f "iso/packages.x86_64"
 # Step 2: Clone dots-hyprland
 echo "--> Cloning dots-hyprland..."
 git clone "$REPO_URL" "$REPO_DIR"
+cd "$REPO_DIR"
+git submodule update --init --recursive
+cd "$SCRIPT_DIR"
 
 # Step 3: Extract & Populate Packages/Requirements
 echo "--> Extracting packages and requirements from dots-hyprland..."
@@ -67,6 +102,12 @@ bash -c "
     source 'sdata/dist-arch/install-deps.sh' 2>/dev/null || true
     for dir in \"\${metapkgs[@]}\"; do
       if [ -f \"\$dir/PKGBUILD\" ]; then
+        # Extract the metapackage name itself (the pkgname variable)
+        (
+          source \"\$dir/PKGBUILD\" 2>/dev/null
+          echo \"\$pkgname\"
+        )
+        # Also extract its dependencies
         (
           depends=()
           makedepends=()
@@ -142,28 +183,30 @@ LIVE_LOCAL="${ISO_DIR}/airootfs/home/liveuser/.local"
 
 mkdir -p "$SKEL_CONFIG" "$SKEL_LOCAL" "$LIVE_CONFIG" "$LIVE_LOCAL"
 
-# Copy config files from dots-hyprland to skel and liveuser
+# Copy ALL config files from dots-hyprland to skel and liveuser
+# This replicates what 3.files-legacy.sh does during normal installation
 if [ -d "$REPO_DIR/dots/.config" ]; then
-    echo "    Copying .config files..."
+    echo "    Copying .config files (quickshell, hypr, fish, konsole, etc.)..."
     rsync -a "$REPO_DIR/dots/.config/" "$SKEL_CONFIG/"
     rsync -a "$REPO_DIR/dots/.config/" "$LIVE_CONFIG/"
-
-    # PATCH: Fix quickshell venv path for Live ISO environment
-    # The dotfiles point to ~/.local/state/quickshell/.venv, but the Live ISO has it pre-built in /usr/share/quickshell/venv
-    echo "    Patching Live User config for ISO venv path..."
-    LIVE_ENV_CONF="$LIVE_CONFIG/hypr/hyprland/env.conf"
-    if [ -f "$LIVE_ENV_CONF" ]; then
-        sed -i 's|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV,.*|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV, /usr/share/quickshell/venv|g' "$LIVE_ENV_CONF"
-    else
-        echo "    WARNING: Could not find env.conf to patch at $LIVE_ENV_CONF"
-    fi
 fi
 
 if [ -d "$REPO_DIR/dots/.local" ]; then
-    echo "    Copying .local files..."
+    echo "    Copying .local files (icons, konsole, etc.)..."
     rsync -a "$REPO_DIR/dots/.local/" "$SKEL_LOCAL/"
     rsync -a "$REPO_DIR/dots/.local/" "$LIVE_LOCAL/"
 fi
+
+# PATCH: Fix quickshell venv path for BOTH Live and Skel users
+echo "    Patching env.conf for ISO venv path (both skel and liveuser)..."
+for ENV_CONF in "$SKEL_CONFIG/hypr/hyprland/env.conf" "$LIVE_CONFIG/hypr/hyprland/env.conf"; do
+    if [ -f "$ENV_CONF" ]; then
+        sed -i 's|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV,.*|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV, /usr/share/quickshell/venv|g' "$ENV_CONF"
+        echo "      - Patched: $ENV_CONF"
+    else
+        echo "      - WARNING: Could not find $ENV_CONF"
+    fi
+done
 
 # Create the firstrun flag to prevent post-install from running full setup
 echo "    Creating firstrun marker..."
@@ -269,8 +312,8 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     sudo pacman -Syw --config "$ISO_DIR/pacman.conf" --cachedir "$HOST_REPO_DIR" --noconfirm --dbpath "$TEMP_DB_PATH" - < "$PKG_LIST_FILE" 2> "$PACMAN_LOG" || true
     
     
-    # Identify AUR packages
-    AUR_PKGS=$(grep "error: target not found:" "$PACMAN_LOG" | awk '{print $NF}' | sort -u)
+    # Identify AUR packages (both "target not found" and "unresolvable dependencies")
+    AUR_PKGS=$(grep -E "error: target not found:|cannot be upgraded due to unresolvable dependencies" "$PACMAN_LOG" | awk '{print $NF}' | tr -d ':' | sort -u)
     rm "$PACMAN_LOG"
     
     if [ -n "$AUR_PKGS" ]; then
@@ -279,8 +322,17 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         echo "$AUR_PKGS" | tr ' ' '\n' | sed 's/^/      - /'
         echo "    ========================================"
         echo "    Attempting to build..."
-        # Ensure base-devel and common build dependencies are present
-        sudo pacman -S --needed --noconfirm base-devel fontforge python-fonttools polkit-qt6
+        
+        # Create a build chroot for isolation
+        if [ ! -d "$CHROOT_DIR/root" ]; then
+            echo "    Creating build chroot environment for package isolation..."
+            mkdir -p "$CHROOT_DIR"
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel fontforge python-fonttools polkit-qt6
+        else
+            echo "    Using existing build chroot..."
+            # Update the chroot
+            arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+        fi
         
         # Start a sudo keepalive in the background so we don't timeout during long builds
         echo "    Starting sudo keepalive for long builds..."
@@ -290,31 +342,138 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         
         BUILD_DIR=$(mktemp -d)
         chmod 777 "$BUILD_DIR"
-        
-        # Find the non-root user for yay/makepkg
-        if [ "$(whoami)" != "root" ]; then
-            REAL_USER="$(whoami)"
-        else
-            # Try multiple methods to find the real user
-            if [ -n "$SUDO_USER" ]; then
-                REAL_USER="$SUDO_USER"
-            elif command -v logname >/dev/null 2>&1 && logname >/dev/null 2>&1; then
-                REAL_USER="$(logname)"
-            else
-                # Fallback: find first non-root user with a home directory
-                REAL_USER=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1; exit}' /etc/passwd)
-            fi
-        fi
-        
-        echo "    Using build user: $REAL_USER"
-        
-        # Ensure the user owns the repo dir so yay can write to it
-        chown -R "$REAL_USER" "$HOST_REPO_DIR" || {
-            echo "    ERROR: Failed to chown $HOST_REPO_DIR to $REAL_USER"
-            exit 1
-        }
 
+        # ====================================================================
+        # DYNAMIC DEPENDENCY RESOLUTION
+        # Build a dependency graph and sort packages topologically
+        # ====================================================================
+        echo "    Resolving package dependencies..."
+        
+        # Create associative arrays to track dependencies
+        declare -A PKG_DEPS
+        declare -A PKG_VISITED
+        declare -a BUILD_ORDER
+        
+        # Function to get dependencies of an AUR package
+        get_aur_deps() {
+            local pkg="$1"
+            local build_pkg="${BUILD_ALIASES[$pkg]:-$pkg}"
+            local deps=""
+            
+            # Check if it's a local metapackage
+            local metapkg_dir="${SCRIPT_DIR}/${REPO_DIR}/sdata/dist-arch/${build_pkg}"
+            
+            if [ -d "$metapkg_dir" ] && [ -f "$metapkg_dir/PKGBUILD" ]; then
+                # Parse local PKGBUILD
+                deps=$(bash -c "
+                    source '$metapkg_dir/PKGBUILD' 2>/dev/null
+                    for dep in \"\${depends[@]}\" \"\${makedepends[@]}\"; do
+                        # Strip version constraints like >=1.0
+                        echo \"\${dep%%[<>=]*}\"
+                    done
+                " 2>/dev/null | sort -u | tr '\n' ' ')
+            else
+                # Clone from AUR temporarily to check dependencies
+                local tmp_dir=$(mktemp -d)
+                if git clone --depth=1 "https://aur.archlinux.org/${build_pkg}.git" "$tmp_dir/$build_pkg" 2>/dev/null; then
+                    if [ -f "$tmp_dir/$build_pkg/PKGBUILD" ]; then
+                        deps=$(bash -c "
+                            source '$tmp_dir/$build_pkg/PKGBUILD' 2>/dev/null
+                            for dep in \"\${depends[@]}\" \"\${makedepends[@]}\"; do
+                                echo \"\${dep%%[<>=]*}\"
+                            done
+                        " 2>/dev/null | sort -u | tr '\n' ' ')
+                    fi
+                fi
+                rm -rf "$tmp_dir"
+            fi
+            
+            # Apply OFFICIAL_ALIASES to dependency names 
+            local aliased_deps=""
+            for dep in $deps; do
+                local final_dep="${OFFICIAL_ALIASES[$dep]:-$dep}"
+                aliased_deps="$aliased_deps $final_dep"
+            done
+            
+            echo "$aliased_deps"
+        }
+        
+        # Check if a package is in our AUR list
+        is_aur_pkg() {
+            local pkg="$1"
+            echo "$AUR_PKGS" | tr ' ' '\n' | grep -qx "$pkg"
+        }
+        
+        # Recursive function to resolve dependencies (topological sort)
+        resolve_deps() {
+            local pkg="$1"
+            
+            # Already processed
+            [ "${PKG_VISITED[$pkg]}" = "done" ] && return 0
+            
+            # Cycle detection
+            if [ "${PKG_VISITED[$pkg]}" = "in-progress" ]; then
+                echo "      WARNING: Circular dependency detected for $pkg"
+                return 0
+            fi
+            
+            PKG_VISITED[$pkg]="in-progress"
+            
+            # Get dependencies for this package
+            local deps
+            deps=$(get_aur_deps "$pkg")
+            PKG_DEPS[$pkg]="$deps"
+            
+            # Process each dependency that is also an AUR package
+            for dep in $deps; do
+                # Apply OFFICIAL_ALIASES in reverse to check if alias exists
+                local check_dep="$dep"
+                for alias_key in "${!OFFICIAL_ALIASES[@]}"; do
+                    if [ "${OFFICIAL_ALIASES[$alias_key]}" = "$dep" ]; then
+                        check_dep="$alias_key"
+                        break
+                    fi
+                done
+                
+                if is_aur_pkg "$dep" || is_aur_pkg "$check_dep"; then
+                    local actual_pkg="$dep"
+                    is_aur_pkg "$check_dep" && actual_pkg="$check_dep"
+                    resolve_deps "$actual_pkg"
+                fi
+            done
+            
+            PKG_VISITED[$pkg]="done"
+            BUILD_ORDER+=("$pkg")
+        }
+        
+        # Resolve all AUR packages
         for pkg in $AUR_PKGS; do
+            resolve_deps "$pkg"
+        done
+        
+        echo "    Build order determined (${#BUILD_ORDER[@]} packages):"
+        for pkg in "${BUILD_ORDER[@]}"; do
+            echo "      - $pkg"
+        done
+        echo "    ========================================"
+        
+        # Ensure all existing packages in local_repo are registered in the database
+        echo "    Ensuring local repository database is up to date..."
+        for existing_pkg in "$HOST_REPO_DIR"/*.pkg.tar.zst; do
+            [ -f "$existing_pkg" ] && repo-add "$HOST_REPO_DIR/local_repo.db.tar.gz" "$existing_pkg" 2>/dev/null || true
+        done
+        
+        # Sync the chroot's pacman database with our custom config
+        echo "    Syncing chroot pacman database with local repository..."
+        # Copy our pacman.conf to the chroot
+        cp "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root/etc/pacman.conf"
+        # Sync the chroot's database
+        arch-nspawn "$CHROOT_DIR/root" pacman -Sy || {
+            echo "    WARNING: Failed to sync chroot pacman database with local repo"
+        }
+        
+        # Build packages in dependency order
+        for pkg in "${BUILD_ORDER[@]}"; do
             # Check if we already have it built in the repo (handle any version format)
             if ls "$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst >/dev/null 2>&1; then
                 echo "      - $pkg already built. Skipping."
@@ -322,31 +481,57 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             fi
             
             echo "      ========================================"
-            echo "      Building AUR package: $pkg"
+            echo "      Building package: $pkg"
             echo "      ========================================"
+            
+            # Skip removing packages from system - we're using chroot isolation now
+            
             (
-                # Use a temporary directory for the yay build process
+                # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
                 chmod 777 "$BUILD_SUBDIR"
                 
-                # We use PKGDEST to force yay/makepkg to put the output in our repo
-                # and we use --aur to ensure we hit the AUR repo
+                # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
                 
                 # If the package is in BUILD_ALIASES, use the base name for the build
                 BUILD_PKG="${BUILD_ALIASES[$pkg]:-$pkg}"
                 
-                # Clone the AUR repository
-                cd "$BUILD_SUBDIR"
-                git clone "https://aur.archlinux.org/${BUILD_PKG}.git" "$BUILD_PKG" 2>/dev/null || {
-                    echo "        ERROR: Could not clone $BUILD_PKG from AUR"
-                    exit 1
-                }
+                # Check if this is a dots-hyprland metapackage (illogical-impulse-*)
+                # These have local PKGBUILDs in the dots-hyprland repo
+                METAPKG_DIR="${SCRIPT_DIR}/${REPO_DIR}/sdata/dist-arch/${BUILD_PKG}"
                 
-                cd "$BUILD_PKG"
+                if [ -d "$METAPKG_DIR" ] && [ -f "$METAPKG_DIR/PKGBUILD" ]; then
+                    echo "        Found local metapackage at $METAPKG_DIR"
+                    cp -r "$METAPKG_DIR" "$BUILD_SUBDIR/$BUILD_PKG"
+                    cd "$BUILD_SUBDIR/$BUILD_PKG"
+                    
+                    # Patch PKGBUILD to use official package names instead of AUR names
+                    echo "        Patching PKGBUILD with official package name aliases..."
+                    sed -i 's/ttf-material-symbols-variable-git/ttf-material-symbols-variable/g' PKGBUILD
+                    # Replace ttf-twemoji with ttf-twemoji-color (use word boundary to avoid partial matches)
+                    sed -i 's/\bttf-twemoji\b/ttf-twemoji-color/g' PKGBUILD
+                    sed -i 's/qt6-avif-image-plugin/qt6-imageformats/g' PKGBUILD
+                else
+                    # Not a local metapackage, try AUR
+                    cd "$BUILD_SUBDIR"
+                    git clone "https://aur.archlinux.org/${BUILD_PKG}.git" "$BUILD_PKG" 2>/dev/null || {
+                        echo "        ERROR: Could not clone $BUILD_PKG from AUR"
+                        exit 1
+                    }
+                    cd "$BUILD_PKG"
+                fi
                 
-                # Build with -s to sync dependencies automatically, -f to force rebuild
-                sudo -u "$REAL_USER" PKGDEST="$HOST_REPO_DIR" makepkg -sf --noconfirm
+                # Build using makechrootpkg for complete isolation
+                echo "        Building in chroot with makechrootpkg..."
+                cd "$BUILD_SUBDIR/$BUILD_PKG"
+                
+                # makechrootpkg automatically copies the PKGBUILD directory into the chroot and builds it
+                # The built package will be in the current directory after completion
+                makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
+                
+                # Copy built packages to our local repo
+                cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
                 
                 # Strict verification: Check if any new package file appeared in PKGDEST
                 if [ -z "$(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2)" ]; then
@@ -357,6 +542,16 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 echo "        ERROR: Failed to build $pkg."
                 exit 1
             }
+            
+            # Add the newly built package to the local repository database (outside subshell)
+            # This ensures dependencies can find it when they're built next
+            echo "        Updating local repository database..."
+            for newpkg in $(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2); do
+                repo-add "$HOST_REPO_DIR/local_repo.db.tar.gz" "$newpkg" 2>/dev/null || true
+            done
+            
+            # Sync pacman database so the next package can find this dependency
+            sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH" >/dev/null 2>&1 || true
         done
         sudo rm -rf "$BUILD_DIR"
     fi
@@ -378,47 +573,44 @@ WHEELS_DIR="${ISO_DIR}/airootfs/var/cache/wheels"
 PIP_CACHE="${SCRIPT_DIR}/.pip_cache"
 mkdir -p "$WHEELS_DIR" "$PIP_CACHE"
 
-# Install build dependencies needed to compile Python packages
-echo "    Installing build dependencies..."
-sudo pacman -S --needed --noconfirm \
-    base-devel \
-    meson \
-    ninja \
-    patchelf \
-    python-build \
-    cairo \
-    gobject-introspection \
-    wayland \
-    wayland-protocols \
-    dbus \
-    dbus-glib \
-    python-dbus \
-    libffi \
-    glib2 \
-    openblas \
-    lapack \
-    uv
-
-# Count unique packages in requirements.txt
+# Check if we need to build wheels or can skip this section
 echo "    Counting required packages..."
 REQUIRED_COUNT=$(grep -vE "^#|^$" "$REQ_FILE" | wc -l)
 echo "    Required packages: $REQUIRED_COUNT"
 
-# Download packages with uv using Python 3.14
-echo "    Downloading packages for Python 3.14..."
-# Create a temporary Python 3.14 venv to download wheels
-TEMP_VENV="/tmp/endos-wheel-builder-$$"
-uv venv "$TEMP_VENV" -p 3.14 --quiet
-# uv doesn't include pip by default, so we must install it
-uv pip install pip --python "$TEMP_VENV/bin/python" --quiet
+# Use the build chroot for Python wheel building to avoid installing on host system
+if [ ! -d "$CHROOT_DIR/root" ]; then
+    echo "    Creating wheel build chroot..."
+    mkdir -p "$CHROOT_DIR"
+    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel python \
+        meson ninja patchelf python-build cairo gobject-introspection \
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+else
+    echo "    Installing Python wheel build dependencies in chroot..."
+    arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+        meson ninja patchelf python-build cairo gobject-introspection \
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+fi
 
-"$TEMP_VENV/bin/pip" download --dest "$WHEELS_DIR" -r "$REQ_FILE" 2>&1 || {
+# Copy requirements.txt into chroot and create wheels directory
+# Use /root instead of /tmp since /tmp might not persist in arch-nspawn
+mkdir -p "$CHROOT_DIR/root/root/wheels"
+cp "$REQ_FILE" "$CHROOT_DIR/root/root/requirements.txt"
+
+# Download packages with uv using Python 3.14 inside the chroot
+echo "    Downloading packages for Python 3.14..."
+arch-nspawn "$CHROOT_DIR/root" bash -c '
+    uv venv /root/wheel-venv -p 3.14 --quiet
+    uv pip install pip --python /root/wheel-venv/bin/python --quiet
+    /root/wheel-venv/bin/pip download --dest /root/wheels -r /root/requirements.txt 2>&1 || exit 1
+    rm -rf /root/wheel-venv
+' || {
     echo "    ERROR: Failed to download Python packages. Aborting."
-    rm -rf "$TEMP_VENV"
     exit 1
 }
-rm -rf "$TEMP_VENV"
 
+# Copy wheels out of chroot to our target directory
+cp -r "$CHROOT_DIR/root/root/wheels/"* "$WHEELS_DIR/" 2>/dev/null || true
 
 # Check for tar.gz files that need building
 echo "    Checking for source distributions..."
@@ -427,39 +619,38 @@ TARBALL_COUNT=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$TARBALL_COUNT" -gt 0 ]; then
     echo "    Found $TARBALL_COUNT source distributions that need building..."
     
-    # Create a Python 3.14 venv for building wheels
-    echo "    Creating Python 3.14 venv for building..."
-    BUILD_VENV="/tmp/endos-wheel-builder-build-$$"
-    uv venv "$BUILD_VENV" -p 3.14 --quiet
-
-    # Install pip in build venv
-    uv pip install pip --python "$BUILD_VENV/bin/python" --quiet
+    # Copy tarballs into chroot for building
+    cp "$WHEELS_DIR"/*.tar.gz "$CHROOT_DIR/root/root/wheels/" 2>/dev/null || true
     
-    # Build each tar.gz into a wheel
-    for tarball in "$WHEELS_DIR"/*.tar.gz; do
-        [ -e "$tarball" ] || continue
+    # Build wheels inside the chroot
+    arch-nspawn "$CHROOT_DIR/root" bash -c '
+        uv venv /root/build-venv -p 3.14 --quiet
+        uv pip install pip --python /root/build-venv/bin/python --quiet
         
-        PACKAGE_NAME=$(basename "$tarball" .tar.gz | sed -E 's/-[0-9].*//')
-        echo "      Building wheel for: $PACKAGE_NAME"
-        
-        # Try to build the wheel using venv's pip
-        if "$BUILD_VENV/bin/pip" wheel --no-deps --wheel-dir "$WHEELS_DIR" "$tarball" 2>&1; then
-            echo "        ✓ Successfully built $PACKAGE_NAME"
-            # Remove the tar.gz if wheel was created successfully
-            # Check if a corresponding .whl file exists (try both hyphen and underscore versions)
-            PACKAGE_NAME_UNDERSCORE=$(echo "$PACKAGE_NAME" | tr '-' '_')
-            if ls "$WHEELS_DIR"/${PACKAGE_NAME}*.whl >/dev/null 2>&1 || \
-               ls "$WHEELS_DIR"/${PACKAGE_NAME_UNDERSCORE}*.whl >/dev/null 2>&1; then
-                rm -f "$tarball"
-                echo "        ✓ Cleaned up source distribution"
+        for tarball in /root/wheels/*.tar.gz; do
+            [ -e "$tarball" ] || continue
+            PACKAGE_NAME=$(basename "$tarball" .tar.gz | sed -E '\''s/-[0-9].*//'\'' )
+            echo "      Building wheel for: $PACKAGE_NAME"
+            
+            if /root/build-venv/bin/pip wheel --no-deps --wheel-dir /root/wheels "$tarball" 2>&1; then
+                echo "        ✓ Successfully built $PACKAGE_NAME"
+                # Check if wheel was created
+                PACKAGE_NAME_UNDERSCORE=$(echo "$PACKAGE_NAME" | tr "-" "_")
+                if ls /root/wheels/${PACKAGE_NAME}*.whl >/dev/null 2>&1 || \
+                   ls /root/wheels/${PACKAGE_NAME_UNDERSCORE}*.whl >/dev/null 2>&1; then
+                    rm -f "$tarball"
+                    echo "        ✓ Cleaned up source distribution"
+                fi
+            else
+                echo "        ✗ WARNING: Failed to build wheel for $PACKAGE_NAME"
             fi
-        else
-            echo "        ✗ WARNING: Failed to build wheel for $PACKAGE_NAME"
-            echo "        Keeping source distribution for manual installation"
-        fi
-    done
+        done
+        
+        rm -rf /root/build-venv
+    '
     
-    rm -rf "$BUILD_VENV"
+    # Copy built wheels back out
+    cp -r "$CHROOT_DIR/root/root/wheels/"*.whl "$WHEELS_DIR/" 2>/dev/null || true
     
     # Recount tarballs after building
     REMAINING_TARBALLS=$(ls "$WHEELS_DIR"/*.tar.gz 2>/dev/null | wc -l)
@@ -580,5 +771,11 @@ fi
 
 # Use pacman-build.conf for mkarchiso (has local_repo enabled)
 sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" -C "$ISO_DIR/pacman-build.conf" "$ISO_DIR"
+
+# Cleanup build chroot (optional - comment out to keep for faster rebuilds)
+if [ -d "$CHROOT_DIR" ]; then
+    echo "--> Cleaning up build chroot..."
+    sudo rm -rf "$CHROOT_DIR"
+fi
 
 echo "=== Build Complete ==="

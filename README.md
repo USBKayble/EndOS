@@ -118,15 +118,26 @@ See [iso/README.md](iso/README.md) for detailed ISO structure documentation.
 
 ```
 EndOS/
-├── build.sh              # Main build script
-├── iso/                  # ISO configuration
-│   ├── airootfs/        # Live system root filesystem
-│   ├── pacman.conf      # Package manager configuration
-│   ├── profiledef.sh    # ISO profile definition
-│   └── README.md        # ISO structure documentation
-├── local_repo/          # Built AUR packages (generated)
-├── out/                 # Built ISO output (generated)
-└── work/                # Build working directory (generated)
+├── build.sh                    # Main build script
+├── debug-script.sh             # Debugging utilities
+├── inspect-iso.sh              # ISO inspection tools
+├── run_vm.sh                   # VM testing script
+├── test-wheel-download.sh      # Wheel testing utilities
+├── wheel-caching-optimization.sh # Wheel caching optimizations
+├── .github/                    # GitHub Actions workflows
+├── iso/                        # ISO configuration
+│   ├── airootfs/              # Live system root filesystem
+│   ├── pacman.conf            # Package manager configuration
+│   ├── profiledef.sh          # ISO profile definition
+│   ├── base.packages.x86_64   # Core system packages
+│   ├── user.packages.x86_64   # User-added packages
+│   ├── packages.x86_64        # Combined package list (generated)
+│   ├── requirements.txt       # Python dependencies (generated)
+│   └── README.md              # ISO structure documentation
+├── dots-hyprland/             # Cloned dotfiles repository (generated)
+├── local_repo/                # Built AUR packages (generated)
+├── out/                       # Built ISO output (generated)
+└── work/                      # Build working directory (generated)
 ```
 
 ## 🎯 Use Cases

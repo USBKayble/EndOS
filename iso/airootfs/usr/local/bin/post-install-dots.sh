@@ -44,22 +44,48 @@ export INSTALL_FIRSTRUN=true
 export IGNORE_OUTDATE_CHECK=true
 
 # Setup quickshell Python virtual environment
-echo "[$0]: Setting up quickshell Python environment..."
-VENV_DIR="${HOME}/.local/state/quickshell/.venv"
-mkdir -p "$(dirname "$VENV_DIR")"
-if [[ ! -d "$VENV_DIR" ]] && command -v python3.14 &>/dev/null; then
-    python3.14 -m venv --system-site-packages "$VENV_DIR" 2>/dev/null || true
-    if [[ -f "$VENV_DIR/bin/activate" ]]; then
-        source "$VENV_DIR/bin/activate"
-        REQUIREMENTS="${DOTS_DIR}/sdata/uv/requirements.txt"
-        if [[ -f "$REQUIREMENTS" ]]; then
-            pip install --quiet --no-cache-dir -r "$REQUIREMENTS" 2>/dev/null || true
-        fi
-        deactivate
-        echo "[$0]: Quickshell venv created at $VENV_DIR"
-    fi
+# Note: System venv is pre-built at /usr/share/quickshell/venv
+# This creates a user-specific venv only if needed for customization
+echo "[$0]: Verifying quickshell Python environment..."
+
+# Check if system venv exists
+SYSTEM_VENV="/usr/share/quickshell/venv"
+USER_VENV="${HOME}/.local/state/quickshell/.venv"
+
+if [ -d "$SYSTEM_VENV" ] && [ -f "$SYSTEM_VENV/bin/activate" ]; then
+    echo "[$0]: Using pre-built system venv at $SYSTEM_VENV"
+    # The env.conf should already point to the system venv for live ISO
+    # Users who install to disk may want to create their own venv later
 else
-    echo "[$0]: Quickshell venv already exists or python3.14 not available"
+    echo "[$0]: System venv not found, creating user venv at $USER_VENV..."
+    mkdir -p "$(dirname "$USER_VENV")"
+    if command -v python3.14 &>/dev/null; then
+        python3.14 -m venv --system-site-packages "$USER_VENV" 2>/dev/null || true
+        if [ -f "$USER_VENV/bin/activate" ]; then
+            source "$USER_VENV/bin/activate"
+            REQUIREMENTS="${DOTS_DIR}/sdata/uv/requirements.txt"
+            if [ -f "$REQUIREMENTS" ]; then
+                # Use cached wheels if available
+                WHEELS_CACHE="/var/cache/wheels"
+                if [ -d "$WHEELS_CACHE" ]; then
+                    pip install --quiet --no-cache-dir --no-index --find-links "$WHEELS_CACHE" -r "$REQUIREMENTS" 2>/dev/null || \
+                    pip install --quiet --no-cache-dir -r "$REQUIREMENTS" 2>/dev/null || true
+                else
+                    pip install --quiet --no-cache-dir -r "$REQUIREMENTS" 2>/dev/null || true
+                fi
+            fi
+            deactivate
+            echo "[$0]: User quickshell venv created at $USER_VENV"
+            
+            # Update env.conf to point to user venv
+            ENV_CONF="${HOME}/.config/hypr/hyprland/env.conf"
+            if [ -f "$ENV_CONF" ]; then
+                sed -i "s|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV,.*|env = ILLOGICAL_IMPULSE_VIRTUAL_ENV, ${USER_VENV}|g" "$ENV_CONF"
+            fi
+        fi
+    else
+        echo "[$0]: WARNING: python3.14 not available, quickshell may not work properly"
+    fi
 fi
 
 # Setup user groups (quick operation)
