@@ -76,6 +76,10 @@ fi
 # Note: User-specific services (ydotool --user) and usermod operations 
 # are handled in post-install-dots.sh since they require an actual user context
 
+# Fix permissions for scripts in dotfiles (they lose +x during build/rsync sometimes)
+echo "Fixing script permissions..."
+find /home/liveuser/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+find /etc/skel/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
 echo "=== Shrinking ISO Size ==="
 
 # Remove documentation, man pages and info pages

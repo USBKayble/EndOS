@@ -6,12 +6,24 @@ import Quickshell.Io
 Rectangle {
     id: diskPage
     property var root
+    
+    // Color properties with fallback defaults
+    readonly property color pageTextColor: root ? root.textOnSurfaceColor : "#e6e1e1"
+    readonly property color pageBackgroundColor: root ? pageBackgroundColor : "#141313"
+    readonly property color pageSurfaceColor: root ? pageSurfaceColor : "#1c1b1c"
+    readonly property color pageSurfaceContainerColor: root ? pageSurfaceContainerColor : "#201f20"
+    readonly property color pageSurfaceContainerHighColor: root ? pageSurfaceContainerHighColor : "#2b2a2a"
+    readonly property color pagePrimaryColor: root ? pagePrimaryColor : "#cbc4cb"
+    readonly property color pageOutlineColor: root ? pageOutlineColor : "#948f94"
+    
     color: "transparent"
     
     // Disk detection process
     Process {
         id: diskDetectProc
-        command: ["bash", "-c", "/usr/share/endos-installer/scripts/detect-disks.sh"]
+        command: root && root.scriptBasePath 
+            ? ["bash", "-c", root.scriptBasePath + "/detect-disks.sh"]
+            : ["bash", "-c", "./scripts/detect-disks.sh"]
         running: false
         
         stdout: SplitParser {
@@ -69,7 +81,7 @@ Rectangle {
     }
     
     Component.onCompleted: {
-        diskDetectProc.exec()
+        diskDetectProc.running = true
     }
     
     ColumnLayout {
@@ -82,13 +94,13 @@ Rectangle {
             text: "Disk Partitioning"
             font.pixelSize: 28
             font.weight: Font.Bold
-            color: root.onSurfaceColor
+            color: pageTextColor
         }
         
         Text {
             text: "Choose where to install EndOS"
             font.pixelSize: 14
-            color: root.outlineColor
+            color: pageOutlineColor
             Layout.bottomMargin: 8
         }
         
@@ -110,7 +122,7 @@ Rectangle {
                         text: "Select Installation Disk"
                         font.pixelSize: 18
                         font.weight: Font.Medium
-                        color: root.onSurfaceColor
+                        color: pageTextColor
                     }
                     
                     ComboBox {
@@ -130,26 +142,26 @@ Rectangle {
                                     text: model.displayName
                                     font.pixelSize: 14
                                     font.weight: Font.Medium
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                                 
                                 Text {
                                     text: `Size: ${model.size} | Type: ${model.type}`
                                     font.pixelSize: 11
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                 }
                             }
                             
                             background: Rectangle {
-                                color: parent.hovered ? root.surfaceContainerHighColor : "transparent"
+                                color: parent.hovered ? pageSurfaceContainerHighColor : "transparent"
                                 radius: 4
                             }
                         }
                         
                         background: Rectangle {
-                            color: root.surfaceContainerHighColor
+                            color: pageSurfaceContainerHighColor
                             radius: 6
-                            border.color: diskCombo.activeFocus ? root.primaryColor : root.outlineColor
+                            border.color: diskCombo.activeFocus ? pagePrimaryColor : pageOutlineColor
                             border.width: diskCombo.activeFocus ? 2 : 1
                         }
                         
@@ -158,7 +170,7 @@ Rectangle {
                             rightPadding: diskCombo.indicator.width + 12
                             text: diskCombo.displayText
                             font.pixelSize: 14
-                            color: root.onSurfaceColor
+                            color: pageTextColor
                             verticalAlignment: Text.AlignVCenter
                         }
                         
@@ -169,7 +181,7 @@ Rectangle {
                                 
                                 // Detect existing OS on this disk
                                 osDetectProc.disk = disk.path
-                                osDetectProc.exec()
+                                osDetectProc.running = true
                             }
                         }
                     }
@@ -179,9 +191,9 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 600
                         implicitHeight: diskInfoLayout.implicitHeight + 24
-                        color: root.surfaceColor
+                        color: pageSurfaceColor
                         radius: 8
-                        border.color: root.outlineColor
+                        border.color: pageOutlineColor
                         border.width: 1
                         visible: diskCombo.currentIndex >= 0
                         
@@ -198,25 +210,25 @@ Rectangle {
                                     text: "Disk Information"
                                     font.pixelSize: 14
                                     font.weight: Font.Medium
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                                 
                                 Item { Layout.fillWidth: true }
                                 
                                 Button {
                                     text: "Refresh"
-                                    onClicked: diskDetectProc.exec()
+                                    onClicked: diskDetectProc.running = true
                                     
                                     background: Rectangle {
-                                        color: parent.down ? Qt.darker(root.surfaceContainerHighColor, 1.2) : 
-                                               parent.hovered ? Qt.lighter(root.surfaceContainerHighColor, 1.1) : root.surfaceContainerHighColor
+                                        color: parent.down ? Qt.darker(pageSurfaceContainerHighColor, 1.2) : 
+                                               parent.hovered ? Qt.lighter(pageSurfaceContainerHighColor, 1.1) : pageSurfaceContainerHighColor
                                         radius: 4
                                     }
                                     
                                     contentItem: Text {
                                         text: parent.text
                                         font.pixelSize: 11
-                                        color: root.onSurfaceColor
+                                        color: pageTextColor
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -231,35 +243,35 @@ Rectangle {
                                 Text {
                                     text: "Path:"
                                     font.pixelSize: 12
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                 }
                                 Text {
                                     text: diskCombo.currentIndex >= 0 ? diskModel.get(diskCombo.currentIndex).path : "-"
                                     font.pixelSize: 12
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                     font.family: "monospace"
                                 }
                                 
                                 Text {
                                     text: "Size:"
                                     font.pixelSize: 12
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                 }
                                 Text {
                                     text: diskCombo.currentIndex >= 0 ? diskModel.get(diskCombo.currentIndex).size : "-"
                                     font.pixelSize: 12
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                                 
                                 Text {
                                     text: "Type:"
                                     font.pixelSize: 12
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                 }
                                 Text {
                                     text: diskCombo.currentIndex >= 0 ? diskModel.get(diskCombo.currentIndex).type : "-"
                                     font.pixelSize: 12
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                             }
                         }
@@ -296,14 +308,14 @@ Rectangle {
                                 text: "Existing Operating System Detected"
                                 font.pixelSize: 16
                                 font.weight: Font.Bold
-                                color: root.onSurfaceColor
+                                color: pageTextColor
                             }
                         }
                         
                         Text {
                             text: "We found the following operating systems on this disk:"
                             font.pixelSize: 13
-                            color: root.onSurfaceColor
+                            color: pageTextColor
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
@@ -311,7 +323,7 @@ Rectangle {
                         Rectangle {
                             Layout.fillWidth: true
                             implicitHeight: osListText.implicitHeight + 16
-                            color: root.surfaceContainerColor
+                            color: pageSurfaceContainerColor
                             radius: 6
                             
                             Text {
@@ -321,7 +333,7 @@ Rectangle {
                                 text: ""
                                 font.pixelSize: 12
                                 font.family: "monospace"
-                                color: root.onSurfaceColor
+                                color: pageTextColor
                             }
                         }
                     }
@@ -336,7 +348,7 @@ Rectangle {
                         text: "Installation Mode"
                         font.pixelSize: 18
                         font.weight: Font.Medium
-                        color: root.onSurfaceColor
+                        color: pageTextColor
                     }
                     
                     // Auto mode (erase disk)
@@ -344,9 +356,9 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 600
                         implicitHeight: autoModeLayout.implicitHeight + 24
-                        color: autoModeRadio.checked ? root.surfaceContainerHighColor : root.surfaceColor
+                        color: autoModeRadio.checked ? pageSurfaceContainerHighColor : pageSurfaceColor
                         radius: 8
-                        border.color: autoModeRadio.checked ? root.primaryColor : root.outlineColor
+                        border.color: autoModeRadio.checked ? pagePrimaryColor : pageOutlineColor
                         border.width: autoModeRadio.checked ? 2 : 1
                         
                         MouseArea {
@@ -379,7 +391,7 @@ Rectangle {
                                     implicitWidth: 20
                                     implicitHeight: 20
                                     radius: 10
-                                    border.color: root.outlineColor
+                                    border.color: pageOutlineColor
                                     border.width: 2
                                     color: "transparent"
                                     
@@ -388,7 +400,7 @@ Rectangle {
                                         width: 10
                                         height: 10
                                         radius: 5
-                                        color: root.primaryColor
+                                        color: pagePrimaryColor
                                         visible: autoModeRadio.checked
                                     }
                                 }
@@ -418,7 +430,7 @@ Rectangle {
                                 Text {
                                     text: "Recommended for new installations. Creates optimal partition layout automatically."
                                     font.pixelSize: 11
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                     Layout.fillWidth: true
                                     wrapMode: Text.WordWrap
                                 }
@@ -431,9 +443,9 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 600
                         implicitHeight: dualBootModeLayout.implicitHeight + 24
-                        color: dualBootRadio.checked ? root.surfaceContainerHighColor : root.surfaceColor
+                        color: dualBootRadio.checked ? pageSurfaceContainerHighColor : pageSurfaceColor
                         radius: 8
-                        border.color: dualBootRadio.checked ? root.primaryColor : root.outlineColor
+                        border.color: dualBootRadio.checked ? pagePrimaryColor : pageOutlineColor
                         border.width: dualBootRadio.checked ? 2 : 1
                         visible: dualBootCard.visible
                         
@@ -470,7 +482,7 @@ Rectangle {
                                         implicitWidth: 20
                                         implicitHeight: 20
                                         radius: 10
-                                        border.color: root.outlineColor
+                                        border.color: pageOutlineColor
                                         border.width: 2
                                         color: "transparent"
                                         
@@ -479,7 +491,7 @@ Rectangle {
                                             width: 10
                                             height: 10
                                             radius: 5
-                                            color: root.primaryColor
+                                            color: pagePrimaryColor
                                             visible: dualBootRadio.checked
                                         }
                                     }
@@ -493,13 +505,13 @@ Rectangle {
                                         text: "Install Alongside Existing OS (Dual Boot)"
                                         font.pixelSize: 14
                                         font.weight: Font.Medium
-                                        color: root.onSurfaceColor
+                                        color: pageTextColor
                                     }
                                     
                                     Text {
                                         text: "Shrink existing partition and install EndOS in the freed space"
                                         font.pixelSize: 11
-                                        color: root.outlineColor
+                                        color: pageOutlineColor
                                         Layout.fillWidth: true
                                         wrapMode: Text.WordWrap
                                     }
@@ -515,7 +527,7 @@ Rectangle {
                                 Text {
                                     text: "Allocate space for EndOS:"
                                     font.pixelSize: 13
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                                 
                                 // Visual partition bar
@@ -523,8 +535,8 @@ Rectangle {
                                     Layout.fillWidth: true
                                     height: 40
                                     radius: 6
-                                    color: root.surfaceContainerColor
-                                    border.color: root.outlineColor
+                                    color: pageSurfaceContainerColor
+                                    border.color: pageOutlineColor
                                     border.width: 1
                                     
                                     Row {
@@ -543,7 +555,7 @@ Rectangle {
                                                 anchors.centerIn: parent
                                                 text: "Existing OS"
                                                 font.pixelSize: 11
-                                                color: root.backgroundColor
+                                                color: pageBackgroundColor
                                                 visible: parent.width > 80
                                             }
                                         }
@@ -553,13 +565,13 @@ Rectangle {
                                             width: parent.width * (partitionSlider.value / 100)
                                             height: parent.height
                                             radius: 4
-                                            color: root.primaryColor
+                                            color: pagePrimaryColor
                                             
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "EndOS"
                                                 font.pixelSize: 11
-                                                color: root.backgroundColor
+                                                color: pageBackgroundColor
                                                 visible: parent.width > 60
                                             }
                                         }
@@ -582,12 +594,12 @@ Rectangle {
                                         width: partitionSlider.availableWidth
                                         height: implicitHeight
                                         radius: 2
-                                        color: root.outlineColor
+                                        color: pageOutlineColor
                                         
                                         Rectangle {
                                             width: partitionSlider.visualPosition * parent.width
                                             height: parent.height
-                                            color: root.primaryColor
+                                            color: pagePrimaryColor
                                             radius: 2
                                         }
                                     }
@@ -598,8 +610,8 @@ Rectangle {
                                         implicitWidth: 20
                                         implicitHeight: 20
                                         radius: 10
-                                        color: partitionSlider.pressed ? Qt.darker(root.primaryColor, 1.2) : root.primaryColor
-                                        border.color: root.backgroundColor
+                                        color: partitionSlider.pressed ? Qt.darker(pagePrimaryColor, 1.2) : pagePrimaryColor
+                                        border.color: pageBackgroundColor
                                         border.width: 2
                                     }
                                 }
@@ -611,19 +623,19 @@ Rectangle {
                                     Text {
                                         text: `EndOS: ${Math.round(partitionSlider.value)}%`
                                         font.pixelSize: 12
-                                        color: root.onSurfaceColor
+                                        color: pageTextColor
                                     }
                                     
                                     Text {
                                         text: "•"
                                         font.pixelSize: 12
-                                        color: root.outlineColor
+                                        color: pageOutlineColor
                                     }
                                     
                                     Text {
                                         text: `Existing OS: ${Math.round(100 - partitionSlider.value)}%`
                                         font.pixelSize: 12
-                                        color: root.onSurfaceColor
+                                        color: pageTextColor
                                     }
                                 }
                                 
@@ -656,9 +668,9 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 600
                         implicitHeight: manualModeLayout.implicitHeight + 24
-                        color: manualModeRadio.checked ? root.surfaceContainerHighColor : root.surfaceColor
+                        color: manualModeRadio.checked ? pageSurfaceContainerHighColor : pageSurfaceColor
                         radius: 8
-                        border.color: manualModeRadio.checked ? root.primaryColor : root.outlineColor
+                        border.color: manualModeRadio.checked ? pagePrimaryColor : pageOutlineColor
                         border.width: manualModeRadio.checked ? 2 : 1
                         
                         MouseArea {
@@ -689,7 +701,7 @@ Rectangle {
                                     implicitWidth: 20
                                     implicitHeight: 20
                                     radius: 10
-                                    border.color: root.outlineColor
+                                    border.color: pageOutlineColor
                                     border.width: 2
                                     color: "transparent"
                                     
@@ -698,7 +710,7 @@ Rectangle {
                                         width: 10
                                         height: 10
                                         radius: 5
-                                        color: root.primaryColor
+                                        color: pagePrimaryColor
                                         visible: manualModeRadio.checked
                                     }
                                 }
@@ -712,13 +724,13 @@ Rectangle {
                                     text: "Manual Partitioning (Advanced)"
                                     font.pixelSize: 14
                                     font.weight: Font.Medium
-                                    color: root.onSurfaceColor
+                                    color: pageTextColor
                                 }
                                 
                                 Text {
                                     text: "Create custom partition layout using cfdisk or gparted"
                                     font.pixelSize: 11
-                                    color: root.outlineColor
+                                    color: pageOutlineColor
                                     Layout.fillWidth: true
                                     wrapMode: Text.WordWrap
                                 }
@@ -757,13 +769,13 @@ Rectangle {
                             text: "💡 Boot Partition Size"
                             font.pixelSize: 14
                             font.weight: Font.Medium
-                            color: root.onSurfaceColor
+                            color: pageTextColor
                         }
                         
                         Text {
                             text: "A boot partition of at least 512MB is recommended for storing multiple kernels and bootloaders. Smaller boot partitions may limit future driver installations."
                             font.pixelSize: 12
-                            color: root.onSurfaceColor
+                            color: pageTextColor
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
@@ -775,7 +787,7 @@ Rectangle {
                             Text {
                                 text: "Boot partition size:"
                                 font.pixelSize: 12
-                                color: root.onSurfaceColor
+                                color: pageTextColor
                             }
                             
                             SpinBox {

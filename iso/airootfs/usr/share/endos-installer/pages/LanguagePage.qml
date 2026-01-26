@@ -4,12 +4,14 @@ import QtQuick.Layouts
 
 Rectangle {
     id: languagePage
-    property var root
-    
-    // Color properties with fallback defaults when root is not set
-    readonly property color pageTextColor: root ? pageTextColor : "#e6e1e1"
-    readonly property color pageOutlineColor: root ? pageOutlineColor : "#948f94"
+    property var root    // Color properties with fallback defaults
+    readonly property color pageTextColor: root ? root.textOnSurfaceColor : "#e6e1e1"
+    readonly property color pageBackgroundColor: root ? pageBackgroundColor : "#141313"
+    readonly property color pageSurfaceColor: root ? pageSurfaceColor : "#1c1b1c"
+    readonly property color pageSurfaceContainerColor: root ? pageSurfaceContainerColor : "#201f20"
     readonly property color pageSurfaceContainerHighColor: root ? pageSurfaceContainerHighColor : "#2b2a2a"
+    readonly property color pagePrimaryColor: root ? pagePrimaryColor : "#cbc4cb"
+    readonly property color pageOutlineColor: root ? pageOutlineColor : "#948f94"
     
     color: "transparent"
     

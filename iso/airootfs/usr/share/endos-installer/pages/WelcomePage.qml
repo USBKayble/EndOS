@@ -4,10 +4,8 @@ import QtQuick.Layouts
 
 Rectangle {
     id: welcomePage
-    property var root
-    
-    // Color properties with fallback defaults
-    readonly property color pageTextColor: root ? pageTextColor : "#e6e1e1"
+    property var root    // Color properties with fallback defaults
+    readonly property color pageTextColor: root ? root.textOnSurfaceColor : "#e6e1e1"
     readonly property color pageBackgroundColor: root ? pageBackgroundColor : "#141313"
     readonly property color pageSurfaceColor: root ? pageSurfaceColor : "#1c1b1c"
     readonly property color pageSurfaceContainerColor: root ? pageSurfaceContainerColor : "#201f20"
