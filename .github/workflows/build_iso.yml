@@ -95,6 +95,12 @@ jobs:
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
+          
+          # Initialize systemd machine-id for systemd-nspawn (used by mkarchroot)
+          systemd-machine-id-setup || true
+          
+          # Ensure /run/systemd directories exist for nspawn
+          mkdir -p /run/systemd/nspawn
 
       - name: Build ISO
         run: |
