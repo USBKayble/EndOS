@@ -10,3 +10,7 @@ visual-studio-code-bin
 google-chrome
 gemini-cli
 opencode
+
+# Installer Dependencies
+pyside6
+python-psutil
