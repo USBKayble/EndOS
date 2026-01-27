@@ -46,12 +46,14 @@ fish
 fontconfig
 foot-terminfo
 fuzzel
+gemini-cli
 geoclue
 git
 glib2
 gnome-keyring
 gobject-introspection
 google-breakpad
+google-chrome
 go-yq
 gpart
 gpm
@@ -143,6 +145,7 @@ nvme-cli
 obs-studio
 openblas
 openbsd-netcat
+opencode
 openconnect
 open-iscsi
 openpgp-card-tools
@@ -227,6 +230,7 @@ uv
 vesktop-bin
 vim
 virtualbox-guest-utils-nox
+visual-studio-code-bin
 vpnc
 wayland
 wayland-protocols
@@ -248,5 +252,4 @@ xdg-utils
 xfsprogs
 xl2tpd
 ydotool
-zen-browser-bin
 zsh
