@@ -66,6 +66,7 @@ echo "i2c-dev" > /etc/modules-load.d/i2c-dev.conf
 
 # Enable systemd services (from 2.setups.sh)
 echo "Enabling systemd services..."
+chmod +x /usr/local/bin/endos-update
 systemctl enable bluetooth
 
 # Configure ydotool systemd user service link if needed
@@ -118,5 +119,7 @@ rm -rf /home/*/. cache/* 2>/dev/null || true
 # Clean unnecessary systemd files
 echo "Cleaning systemd boot entries..."
 rm -rf /boot/loader/entries/*
+
+
 
 echo "=== EndOS Customization Complete ==="

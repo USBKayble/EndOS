@@ -1,4 +1,5 @@
 # EndOS service presets
+enable endos-update.timer
 enable greetd.service
 enable bluetooth.service
 enable NetworkManager.service

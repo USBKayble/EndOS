@@ -1,0 +1,16 @@
+#!/bin/bash
+# EndOS Automatic System Update Script
+
+LOG_FILE="/var/log/endos-update.log"
+
+echo "Starting system update at $(date)" >> "$LOG_FILE"
+
+# Update package databases and upgrade system
+# --noconfirm: automatically answer yes to all prompts
+# --noprogressbar: cleaner logs
+if /usr/bin/pacman -Syu --noconfirm --noprogressbar >> "$LOG_FILE" 2>&1; then
+    echo "System update completed successfully at $(date)" >> "$LOG_FILE"
+else
+    echo "System update failed at $(date)" >> "$LOG_FILE"
+    exit 1
+fi

@@ -3,9 +3,15 @@
 
 # Only run if this is the live user and installer hasn't been dismissed
 if [ "$USER" = "liveuser" ] && [ ! -f ~/.config/installer-dismissed ]; then
-    # Wait for Hyprland to fully start
-    sleep 3
+    # Wait for Hyprland and display to be ready
+    sleep 5
     
-    # Launch installer
-    /usr/local/bin/endos-installer &
+    # Wait for display server
+    while [ -z "$WAYLAND_DISPLAY" ] && [ -z "$DISPLAY" ]; do
+        sleep 1
+    done
+    
+    # Launch installer with logging
+    echo "[$(date)] Launching EndOS installer" >> /tmp/autostart.log
+    /usr/local/bin/endos-installer >> /tmp/installer.log 2>&1 &
 fi

@@ -18,6 +18,12 @@ trap 'echo "ERROR: Script failed at line $LINENO with exit code $?" >&2' ERR
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Verify script is run as root (sudo)
+if [ "$EUID" -ne 0 ]; then
+    echo "ERROR: This script must be run as root. Please use: sudo $0"
+    exit 1
+fi
+
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
 REPO_DIR="dots-hyprland"
@@ -68,6 +74,23 @@ declare -A BUILD_ALIASES=(
 
 # Step 1: Cleanup
 echo "--> Cleaning up previous build artifacts..."
+
+# Robust unmount function to handle stuck binds/proc/sys
+cleanup_mounts() {
+    local target="$1"
+    [ ! -d "$target" ] && return
+    
+    echo "    Checking for stuck mounts in $target..."
+    # Reverse sort by length to unmount deepest paths first
+    mount | grep "$target" | awk '{print $3}' | sort -r | while read -r mountpoint; do
+        echo "    Unmounting $mountpoint..."
+        sudo umount -lf "$mountpoint" || true
+    done
+}
+
+cleanup_mounts "$WORK_DIR"
+cleanup_mounts "$CHROOT_DIR"
+
 sudo rm -rf "$WORK_DIR"
 rm -rf "$REPO_DIR"
 rm -rf ".pip_cache"
@@ -208,12 +231,46 @@ for ENV_CONF in "$SKEL_CONFIG/hypr/hyprland/env.conf" "$LIVE_CONFIG/hypr/hyprlan
     fi
 done
 
+
+
 # Create the firstrun flag to prevent post-install from running full setup
 echo "    Creating firstrun marker..."
 LIVE_DOTS_FLAG="${ISO_DIR}/airootfs/home/liveuser/.config/illogical-impulse/installed_true"
 SKEL_DOTS_FLAG="${ISO_DIR}/airootfs/etc/skel/.config/illogical-impulse/installed_true"
 mkdir -p "$(dirname "$LIVE_DOTS_FLAG")" "$(dirname "$SKEL_DOTS_FLAG")"
 touch "$LIVE_DOTS_FLAG" "$SKEL_DOTS_FLAG"
+
+# Step 4c: Install EndOS Installer
+echo "--> Installing EndOS Installer into ISO..."
+INSTALLER_SRC="${SCRIPT_DIR}/installer"
+INSTALLER_DEST="${ISO_DIR}/airootfs/usr/share/endos-installer"
+mkdir -p "$INSTALLER_DEST"
+
+if [ -d "$INSTALLER_SRC" ]; then
+    echo "    Copying installer files..."
+    rsync -a "$INSTALLER_SRC/" "$INSTALLER_DEST/"
+    
+    # Create launcher script that runs WITHOUT --dry-run
+    echo "    Creating launcher script..."
+    cat > "${ISO_DIR}/airootfs/usr/local/bin/endos-installer" << 'EOF'
+#!/usr/bin/env python3
+import sys
+import os
+
+# Set environment to the installer directory
+installer_dir = "/usr/share/endos-installer"
+sys.path.insert(0, installer_dir)
+os.chdir(installer_dir)
+
+# Import and run the installer
+from main import main
+main()
+EOF
+    chmod +x "${ISO_DIR}/airootfs/usr/local/bin/endos-installer"
+    echo "    ✓ Installer launcher created at /usr/local/bin/endos-installer"
+else
+    echo "    WARNING: Installer source directory not found at $INSTALLER_SRC"
+fi
 
 # Step 5: Local Repo
 echo "--> Managing local repository..."
@@ -564,9 +621,34 @@ else
 fi
 
 # Sync packages to airootfs and generate database
-echo "    Skipping sync of local packages to ISO (save space)..."
-# We do NOT copy the .pkg.tar.zst files to the ISO to save usage.
-# The packages are already installed in the rootfs.
+echo "    Syncing local packages to ISO..."
+# Create the repo directory in the ISO root
+LOCAL_REPO_ISO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
+mkdir -p "$LOCAL_REPO_ISO_DIR"
+
+# Copy ALL packages from the host repo cache (includes official + custom)
+# We assume HOST_REPO_DIR contains everything because we ran 'pacman -Syw' earlier
+cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_ISO_DIR/" 2>/dev/null || true
+
+# Generate the database inside the ISO
+repo-add "$LOCAL_REPO_ISO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_ISO_DIR"/*.pkg.tar.zst >/dev/null
+
+# Embed the package list for the installer to read as "defaults"
+echo "    Embedding package list..."
+cp "$PKG_LIST_FILE" "${ISO_DIR}/airootfs/etc/endos-packages.txt"
+
+# Enable local_repo in the live ISO's pacman.conf
+echo "    Enabling local_repo in live ISO pacman.conf..."
+LIVE_PACMAN_CONF="${ISO_DIR}/airootfs/etc/pacman.conf"
+if [ -f "$LIVE_PACMAN_CONF" ]; then
+    # Uncomment the local_repo section and set correct path
+    sed -i 's|^#\[local_repo\]|\[local_repo\]|' "$LIVE_PACMAN_CONF"
+    sed -i '/^\[local_repo\]/,/^$/s|^#SigLevel = Optional TrustAll|SigLevel = Optional TrustAll|' "$LIVE_PACMAN_CONF"
+    sed -i '/^\[local_repo\]/,/^$/s|^#Server = .*|Server = file:///var/local_repo/x86_64|' "$LIVE_PACMAN_CONF"
+    echo "      ✓ local_repo enabled in live ISO"
+else
+    echo "      WARNING: Could not find $LIVE_PACMAN_CONF"
+fi
 
 # Clean up temp db if it was created
 [ -d "${TEMP_DB_PATH:-}" ] && sudo rm -rf "$TEMP_DB_PATH"

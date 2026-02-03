@@ -1,7 +1,7 @@
 [Unit]
 Description=Greetd login manager
 Documentation=man:greetd(1)
-After=systemd-user-sessions.service plymouth-quit-wait.service
+After=systemd-user-sessions.service
 After=getty@tty1.service
 
 [Service]

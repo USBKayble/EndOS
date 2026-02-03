@@ -43,4 +43,6 @@ file_permissions=(
   ["/etc/systemd/system/configure-liveuser-groups.service"]="0:0:644"
   ["/usr/local/bin/endos-debug"]="0:0:755"
   ["/usr/local/bin/qs"]="0:0:755"
+  ["/usr/local/bin/endos-installer"]="0:0:755"
+  ["/usr/local/bin/autostart-installer"]="0:0:755"
 )
