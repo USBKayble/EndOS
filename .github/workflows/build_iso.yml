@@ -81,7 +81,8 @@ jobs:
             meson \
             ninja \
             patchelf \
-            python-build
+            python-build \
+            dbus
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf
@@ -95,6 +96,14 @@ jobs:
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
+          
+          # Setup systemd environment for systemd-nspawn (used by mkarchroot)
+          systemd-machine-id-setup || true
+          mkdir -p /run/systemd/nspawn
+          
+          # Start dbus for systemd-nspawn
+          mkdir -p /run/dbus
+          dbus-daemon --system --fork || true
 
       - name: Build ISO
         run: |
