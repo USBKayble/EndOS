@@ -236,10 +236,9 @@ class Installer(QObject):
         # 10. Enable Services
         report(75, "Enabling system services...")
         services = ["NetworkManager", "bluetooth", "sddm", "greetd"]
-        for svc in services:
-            self.executor.run(
-                ["arch-chroot", mount_point, "systemctl", "enable", svc], check=False
-            )
+        self.executor.run(
+            ["arch-chroot", mount_point, "systemctl", "enable"] + services, check=False
+        )
 
         # 11. Bootloader
         report(80, "Installing bootloader (GRUB)...")
