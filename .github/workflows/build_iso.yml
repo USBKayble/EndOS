@@ -98,12 +98,11 @@ jobs:
 
       - name: Build ISO
         run: |
-          # Run the build script as the builder user
-          # Ensure strict permissions for working directories
-          chown -R builder:builder .
-          sudo -u builder bash build.sh
+          # Run the build script
+          # The script requires root, but drops privileges internally for AUR builds via makechrootpkg
+          sudo bash build.sh
         env:
-          HOME: /home/builder
+          HOME: /root
 
       - name: Upload build log on failure
         if: failure()
