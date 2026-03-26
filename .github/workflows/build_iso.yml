@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   check-updates:
@@ -175,19 +174,24 @@ jobs:
           path: dots_version.txt
           key: dots-hyprland-${{ needs.check-updates.outputs.commit_sha }}
 
-  create-issue-on-failure:
+  invoke-jules-on-failure:
     needs: build
     if: failure()
     runs-on: ubuntu-latest
     steps:
-      - name: Create issue for Jules
-        uses: actions/github-script@v7
+      - uses: google-labs-code/jules-invoke@v1
         with:
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Build failed - ${new Date().toISOString().split('T')[0]}`,
-              body: `The automated EndOS ISO build failed.\n\n@jules please investigate the build logs and fix the issue.\n\n**Workflow run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n**Triggered by:** \`${{ github.event_name }}\``,
-              labels: ['bug']
-            })
+          prompt: |
+            The EndOS ISO build failed. Please investigate and fix the issue.
+
+            Check the failed workflow run for logs and error output:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            The build uses archiso inside an Arch Linux container. Common failure causes include:
+            - AUR package build failures
+            - Python wheel compilation errors
+            - Package conflicts or missing dependencies in iso/base.packages.x86_64 or iso/user.packages.x86_64
+            - dots-hyprland upstream changes breaking the integration
+
+            Fix the root cause and open a PR targeting main.
+          jules_api_key: ${{ secrets.JULES_API_KEY }}
