@@ -580,7 +580,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
-                chmod -R 777 .
+                chown -R 1000:1000 .
 
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
