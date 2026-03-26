@@ -2,7 +2,7 @@ import logging
 import time
 import os
 import subprocess
-from PySide6.QtCore import QObject, Signal, Slot, QThread
+from PySide6.QtCore import QObject, Signal, Slot, QThread, Property
 from backend.executor import SystemExecutor, get_executor
 from backend.partition_utils import DiskManager
 
@@ -30,23 +30,18 @@ class InstallWorker(QThread):
         self.progress.emit(percent, msg)
 
 
-class Installer(QObject):
-    # Signals
-    progressChanged = Signal(float, str)  # percent, message
-    finished = Signal(bool, str)  # success, error_message
+class CheckInternetWorker(QThread):
+    checkCompleted = Signal(bool)
 
     def __init__(self, dry_run=False):
         super().__init__()
         self._dry_run = dry_run
-        self.executor = get_executor(dry_run)
-        self.disk_manager = DiskManager(self.executor)
-        self._worker = None
-        self._is_online = self._check_internet_connection()
 
-    def _check_internet_connection(self):
-        """Simple check for internet connectivity."""
+    def run(self):
         if self._dry_run:
-            return True  # Simulate online in dry run for UI testing
+            self.checkCompleted.emit(True)
+            return
+
         try:
             # Ping Google DNS
             subprocess.run(
@@ -55,11 +50,36 @@ class Installer(QObject):
                 stderr=subprocess.DEVNULL,
                 check=True,
             )
-            return True
+            self.checkCompleted.emit(True)
         except:
-            return False
+            self.checkCompleted.emit(False)
 
-    @Slot(result=bool)
+
+class Installer(QObject):
+    # Signals
+    progressChanged = Signal(float, str)  # percent, message
+    finished = Signal(bool, str)  # success, error_message
+    onlineStateChanged = Signal(bool)
+
+    def __init__(self, dry_run=False):
+        super().__init__()
+        self._dry_run = dry_run
+        self.executor = get_executor(dry_run)
+        self.disk_manager = DiskManager(self.executor)
+        self._worker = None
+        self._is_online = False
+
+        # Start asynchronous internet check
+        self._internet_worker = CheckInternetWorker(dry_run)
+        self._internet_worker.checkCompleted.connect(self._on_internet_check_finished)
+        self._internet_worker.start()
+
+    @Slot(bool)
+    def _on_internet_check_finished(self, is_online):
+        self._is_online = is_online
+        self.onlineStateChanged.emit(is_online)
+
+    @Property(bool, notify=onlineStateChanged)
     def isOnline(self):
         return self._is_online
 

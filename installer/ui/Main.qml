@@ -269,8 +269,8 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: Installer.isOnline() ? "Online Mode: You can add packages to the installation." : "Offline Mode: Installing default package set."
-                        color: Installer.isOnline() ? "#81C784" : "#E57373" // Green or Red
+                        text: Installer.isOnline ? "Online Mode: You can add packages to the installation." : "Offline Mode: Installing default package set."
+                        color: Installer.isOnline ? "#81C784" : "#E57373" // Green or Red
                         font.bold: true
                     }
                     
@@ -286,7 +286,7 @@ ApplicationWindow {
                         TextArea {
                             id: packagesArea
                             text: "" 
-                            readOnly: !Installer.isOnline()
+                            readOnly: !Installer.isOnline
                             wrapMode: TextEdit.Wrap
                             color: ThemeBridge.color("on_surface")
                             font.family: "Monospace"
