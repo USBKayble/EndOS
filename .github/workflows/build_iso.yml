@@ -91,6 +91,11 @@ jobs:
 
       - name: Build ISO
         run: |
+          # Fix systemd-nspawn issues in Docker by ensuring /run is a tmpfs
+          # before arch-nspawn runs, otherwise it fails to remove propagation mounts.
+          mkdir -p /run/systemd/nspawn/propagate
+          mount -t tmpfs tmpfs /run/systemd/nspawn/propagate || true
+
           # Run the build script directly (it enforces running as root)
           bash build.sh
 
