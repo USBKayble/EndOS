@@ -98,12 +98,21 @@ jobs:
 
       - name: Build ISO
         run: |
-          # Run the build script as the builder user
-          # Ensure strict permissions for working directories
-          chown -R builder:builder .
-          sudo -u builder bash build.sh
-        env:
-          HOME: /home/builder
+          # Initialize machine ID (required by systemd-nspawn even without D-Bus)
+          systemd-machine-id-setup || true
+
+          # Create a systemd-nspawn wrapper that adds --register=no to prevent
+          # scope allocation via D-Bus (which fails in Docker/CI without systemd).
+          # The wrapper calls the real binary directly to avoid infinite recursion.
+          printf '#!/bin/bash\nexec /usr/bin/systemd-nspawn --register=no "$@"\n' \
+            > /usr/local/bin/systemd-nspawn
+          chmod +x /usr/local/bin/systemd-nspawn
+
+          # Ensure directories required by systemd-nspawn exist
+          mkdir -p /run/systemd/nspawn /run/dbus
+
+          # Run the build script as root (build.sh requires EUID=0)
+          bash build.sh
 
       - name: Upload build log on failure
         if: failure()
