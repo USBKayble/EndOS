@@ -89,21 +89,10 @@ jobs:
           echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
           pacman -Sy
 
-      - name: Create build user
-        run: |
-          # Create a non-root user for makepkg (AUR builds)
-          useradd -m builder
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          chown -R builder:builder .
-
       - name: Build ISO
         run: |
-          # Run the build script as the builder user
-          # Ensure strict permissions for working directories
-          chown -R builder:builder .
-          sudo -u builder bash build.sh
-        env:
-          HOME: /home/builder
+          # Run the build script directly (it enforces root EUID internally)
+          bash build.sh
 
       - name: Upload build log on failure
         if: failure()
