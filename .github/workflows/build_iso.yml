@@ -98,6 +98,8 @@ jobs:
 
       - name: Build ISO
         run: |
+          # Fix for systemd-nspawn (used by mkarchroot/makechrootpkg) inside Docker
+          mount --make-rshared /
           # Run the build script
           # The script requires root, but drops privileges internally for AUR builds via makechrootpkg
           sudo bash build.sh
