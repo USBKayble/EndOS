@@ -380,6 +380,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         echo "    ========================================"
         echo "    Attempting to build..."
         
+        # Ensure systemd machine-id exists for systemd-nspawn inside the build container
+        if [ ! -s /etc/machine-id ]; then
+            systemd-machine-id-setup || dbus-uuidgen --ensure=/etc/machine-id
+        fi
+
         # Create a build chroot for isolation
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."

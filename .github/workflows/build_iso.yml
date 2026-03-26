@@ -60,6 +60,9 @@ jobs:
 
       - name: Setup Arch Linux environment
         run: |
+          # Ensure systemd machine-id exists for mkarchroot/systemd-nspawn
+          systemd-machine-id-setup || dbus-uuidgen --ensure=/etc/machine-id
+
           # Initialize pacman keyring
           pacman-key --init
           pacman-key --populate archlinux
