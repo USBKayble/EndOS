@@ -79,11 +79,11 @@ fi
 
 # Fix permissions for scripts in dotfiles (they lose +x during build/rsync sometimes)
 echo "Fixing script permissions..."
-find /home/liveuser/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
-find /etc/skel/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
-find /home/liveuser/dots-hyprland -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
-find /etc/skel/dots-hyprland -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
-find /usr/local/bin -type f -exec chmod +x {} +
+[ -d "/home/liveuser/.config" ] && find /home/liveuser/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+[ -d "/etc/skel/.config" ] && find /etc/skel/.config -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+[ -d "/home/liveuser/dots-hyprland" ] && find /home/liveuser/dots-hyprland -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+[ -d "/etc/skel/dots-hyprland" ] && find /etc/skel/dots-hyprland -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+[ -d "/usr/local/bin" ] && find /usr/local/bin -type f -exec chmod +x {} +
 echo "=== Shrinking ISO Size ==="
 
 # Remove documentation, man pages and info pages
