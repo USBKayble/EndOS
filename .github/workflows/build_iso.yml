@@ -98,12 +98,12 @@ jobs:
 
       - name: Build ISO
         run: |
-          # Run the build script as the builder user
-          # Ensure strict permissions for working directories
+          # Run the build script as root
+          # Ensure strict permissions for working directories so builder user (used by makepkg internally) can write
           chown -R builder:builder .
-          sudo -u builder bash build.sh
+          bash build.sh
         env:
-          HOME: /home/builder
+          HOME: /root
 
       - name: Upload build log on failure
         if: failure()
