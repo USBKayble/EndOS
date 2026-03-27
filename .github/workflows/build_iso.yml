@@ -96,7 +96,10 @@ jobs:
 
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
           mount --make-rshared / || true
+          mountpoint -q /run || mount --bind /run /run || true
           mount --make-rshared /run || true
+          mount --bind $(pwd) $(pwd) || true
+          mount --make-rshared $(pwd) || true
 
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
