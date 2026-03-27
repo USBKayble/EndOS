@@ -360,6 +360,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     
     TEMP_DB_PATH=$(mktemp -d)
     chown -R 1000:1000 "$TEMP_DB_PATH"
+    chmod 755 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
     if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
@@ -404,6 +405,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         
         BUILD_DIR=$(mktemp -d)
         chown -R 1000:1000 "$BUILD_DIR"
+        chmod 755 "$BUILD_DIR"
 
         # ====================================================================
         # DYNAMIC DEPENDENCY RESOLUTION
@@ -552,6 +554,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
                 chown -R 1000:1000 "$BUILD_SUBDIR"
+                chmod 755 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
