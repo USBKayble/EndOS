@@ -42,6 +42,7 @@ class Installer(QObject):
         self.disk_manager = DiskManager(self.executor)
         self._worker = None
         self._is_online = self._check_internet_connection()
+        self._cached_timezones = None
 
     def _check_internet_connection(self):
         """Simple check for internet connectivity."""
@@ -306,6 +307,9 @@ class Installer(QObject):
 
     @Slot(result=list)
     def getTimezones(self):
+        if self._cached_timezones is not None:
+            return self._cached_timezones[:]
+
         if self._dry_run:
             return [
                 "America/New_York",
@@ -341,7 +345,8 @@ class Installer(QObject):
                         zones.append(rel_path)
 
             zones.sort()
-            return zones
+            self._cached_timezones = zones
+            return self._cached_timezones[:]
         except Exception as e:
             logger.error(f"Failed to scan timezones: {e}")
             return ["UTC"]
