@@ -173,25 +173,3 @@ jobs:
         with:
           path: dots_version.txt
           key: dots-hyprland-${{ needs.check-updates.outputs.commit_sha }}
-
-  invoke-jules-on-failure:
-    needs: build
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: google-labs-code/jules-invoke@v1.0.0
-        with:
-          prompt: |
-            The EndOS ISO build failed. Please investigate and fix the issue.
-
-            Check the failed workflow run for logs and error output:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            The build uses archiso inside an Arch Linux container. Common failure causes include:
-            - AUR package build failures
-            - Python wheel compilation errors
-            - Package conflicts or missing dependencies in iso/base.packages.x86_64 or iso/user.packages.x86_64
-            - dots-hyprland upstream changes breaking the integration
-
-            Fix the root cause and open a PR targeting main.
-          jules_api_key: ${{ secrets.JULES_API_KEY }}
