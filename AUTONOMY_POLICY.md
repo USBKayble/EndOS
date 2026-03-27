@@ -19,4 +19,4 @@ Secrets & tokens
 - All tokens used by automation will be stored as GitHub Secrets. Do not paste tokens in chat.
 
 Contact & notification
-- Notifications for failures and merges will be sent to repo configured channels (Discord webhook set in DISCORD_WEBHOOK secret).
+- Notifications for failures and merges will be sent to repo configured channels.
