@@ -197,3 +197,4 @@ This project (EndOS build scripts and ISO configuration) is released under the M
 ## 🚀 Automated Builds
 
 The ISO is automatically built daily via GitHub Actions when the dots-hyprland repository is updated. Check [Releases](https://github.com/USBKayble/EndOS/releases) for the latest builds.
+# EndOS Build Test - Fri Mar 27 01:16:53 AM CDT 2026
