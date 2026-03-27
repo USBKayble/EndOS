@@ -1,0 +1,31 @@
+﻿2026-03-27T07:11:37.9625008Z Current runner version: '2.332.0'
+2026-03-27T07:11:37.9652816Z ##[group]Runner Image Provisioner
+2026-03-27T07:11:37.9653721Z Hosted Compute Agent
+2026-03-27T07:11:37.9654714Z Version: 20260213.493
+2026-03-27T07:11:37.9655444Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-03-27T07:11:37.9656129Z Build Date: 2026-02-13T00:28:41Z
+2026-03-27T07:11:37.9656809Z Worker ID: {f99d2d8f-25c9-4761-8710-baf03dc15446}
+2026-03-27T07:11:37.9657681Z Azure Region: northcentralus
+2026-03-27T07:11:37.9658231Z ##[endgroup]
+2026-03-27T07:11:37.9659697Z ##[group]Operating System
+2026-03-27T07:11:37.9660422Z Ubuntu
+2026-03-27T07:11:37.9660877Z 24.04.3
+2026-03-27T07:11:37.9661357Z LTS
+2026-03-27T07:11:37.9661897Z ##[endgroup]
+2026-03-27T07:11:37.9662415Z ##[group]Runner Image
+2026-03-27T07:11:37.9662966Z Image: ubuntu-24.04
+2026-03-27T07:11:37.9663550Z Version: 20260309.50.1
+2026-03-27T07:11:37.9664989Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260309.50/images/ubuntu/Ubuntu2404-Readme.md
+2026-03-27T07:11:37.9666777Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260309.50
+2026-03-27T07:11:37.9667733Z ##[endgroup]
+2026-03-27T07:11:37.9668866Z ##[group]GITHUB_TOKEN Permissions
+2026-03-27T07:11:37.9670948Z Contents: read
+2026-03-27T07:11:37.9671603Z Metadata: read
+2026-03-27T07:11:37.9672125Z Packages: read
+2026-03-27T07:11:37.9672693Z ##[endgroup]
+2026-03-27T07:11:37.9675132Z Secret source: None
+2026-03-27T07:11:37.9675842Z Prepare workflow directory
+2026-03-27T07:11:38.0012826Z Prepare all required actions
+2026-03-27T07:11:38.0052400Z Getting action download info
+2026-03-27T07:11:38.3473072Z Download action repository 'github/dependabot-action@main' (SHA:61ab5aec688515bfb21b812e3b0f51f6b554bce3)
+2026-03-27T07:11:39.0603830Z Complete job name: Dependabot
