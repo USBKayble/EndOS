@@ -81,7 +81,8 @@ jobs:
             meson \
             ninja \
             patchelf \
-            python-build
+            python-build \
+            dbus
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf
@@ -97,6 +98,14 @@ jobs:
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
           mount --make-rshared / || true
           mount --make-rshared /run || true
+
+          # Mount tmpfs on /run/systemd/nspawn so systemd-nspawn can use its propagation
+          # directory without trying to remove the underlying disk filesystem
+          mkdir -p /run/systemd/nspawn
+          mount -t tmpfs tmpfs /run/systemd/nspawn || true
+
+          # Start dbus so mkarchroot/arch-nspawn can connect to the system bus
+          dbus-daemon --system --fork || true
 
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
