@@ -1,0 +1,48 @@
+name: Build EndOS ISO
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    timeout-minutes: 300
+
+    steps:
+      - name: Initialize pacman and install prerequisites
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm git nodejs sudo
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache built packages
+        uses: actions/cache@v4
+        with:
+          path: local_repo
+          key: pkg-cache-${{ hashFiles('iso/base.packages.x86_64', 'iso/user.packages.x86_64', 'build.sh') }}
+          restore-keys: |
+            pkg-cache-
+
+      - name: Build ISO
+        run: bash build.sh
+
+      - name: Upload ISO artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EndOS-ISO-${{ github.sha }}
+          path: out/*.iso
+          retention-days: 7
