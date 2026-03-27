@@ -24,18 +24,23 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
-mount --make-rshared / || true
+# Isolate mount namespace to prevent systemd-nspawn mounts from leaking to the Docker host
+# This prevents "Attempted to remove disk file system" errors during teardown
+if [ -z "$MOUNT_ISOLATED" ]; then
+    export MOUNT_ISOLATED=1
+    echo "--> Isolating mount namespace..."
+    exec unshare -m bash -c "
+        # Disconnect from host mount propagation
+        mount --make-rslave / || true
 
-# Make /run a mountpoint if it isn't one, then make it slave to prevent leak
-mountpoint -q /run || mount --bind /run /run || true
-mount --make-rslave /run || true
+        # Now make them shared within our private namespace for systemd-nspawn
+        mount --make-rshared / || true
+        mount --make-rshared /run || true
 
-# Make the workspace directory a mountpoint and slave
-mount --bind "$SCRIPT_DIR" "$SCRIPT_DIR" || true
-mount --make-rslave "$SCRIPT_DIR" || true
-
-systemd-machine-id-setup || true
+        systemd-machine-id-setup || true
+        exec bash \"\$0\" \"\$@\"
+    " "$0" "$@"
+fi
 
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
