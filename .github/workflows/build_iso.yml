@@ -109,6 +109,33 @@ jobs:
           path: build.log
           retention-days: 7
 
+      - name: Notify on failure via Discord webhook
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "content": "❌ EndOS build failed for commit ${{ github.sha }}. Check the logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "embeds": [{
+              "title": "Build Failure Details",
+              "description": "See attached build log artifact for details.",
+              "color": 15158332,
+              "fields": [{
+                "name": "Workflow",
+                "value": "${{ github.workflow }}",
+                "inline": true
+              }, {
+                "name": "Commit",
+                "value": "${{ github.sha }}",
+                "inline": true
+              }, {
+                "name": "Run",
+                "value": "${{ github.run_number }}",
+                "inline": true
+              }]
+            }]
+          }' "$DISCORD_WEBHOOK_URL"
+
       - name: Split ISO for Release
         run: |
           cd out
