@@ -54,9 +54,9 @@ class DiskManager:
                                       capture_output=True, check=False)
             if result.stdout:
                 mountpoints = [m.strip() for m in result.stdout.strip().split('\n') if m.strip()]
-                for mp in mountpoints:
-                    logger.info(f"Unmounting {mp}")
-                    self.executor.run(["umount", "-f", mp], check=False)
+                if mountpoints:
+                    logger.info(f"Unmounting {len(mountpoints)} partitions: {', '.join(mountpoints)}")
+                    self.executor.run(["umount", "-f"] + mountpoints, check=False)
         except Exception as e:
             logger.warning(f"Error checking/unmounting partitions: {e}")
 

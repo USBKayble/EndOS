@@ -89,21 +89,17 @@ jobs:
           echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
           pacman -Sy
 
-      - name: Create build user
-        run: |
-          # Create a non-root user for makepkg (AUR builds)
-          useradd -m builder
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          chown -R builder:builder .
-
       - name: Build ISO
         run: |
-          # Run the build script as root
-          # Ensure strict permissions for working directories
-          chown -R builder:builder .
-          mount --make-rshared /
-          mount --bind /run /run
-          mount --make-rshared /run
+          # Initialize machine ID to prevent systemd-nspawn warnings
+          systemd-machine-id-setup || true
+
+          # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
+          mount --make-rshared / || true
+          mount --bind /run /run || true
+          mount --make-rshared /run || true
+
+          # Run the build script directly (it enforces root EUID internally)
           bash build.sh
 
 
