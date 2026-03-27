@@ -91,7 +91,14 @@ jobs:
 
       - name: Build ISO
         run: |
-          # Run the build script as root
+          # Initialize machine ID to prevent systemd-nspawn warnings
+          systemd-machine-id-setup || true
+
+          # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
+          mount --make-rshared /
+          mount --make-rshared /run
+
+          # Run the build script directly (it enforces root EUID internally)
           bash build.sh
 
       - name: Upload build log on failure
