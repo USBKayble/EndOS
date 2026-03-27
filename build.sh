@@ -24,6 +24,10 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
+mount --make-rshared / || true
+mount --make-rshared /run || true
+
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
 REPO_DIR="dots-hyprland"
