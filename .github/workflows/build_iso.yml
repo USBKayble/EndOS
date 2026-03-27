@@ -101,6 +101,8 @@ jobs:
           # Run the build script as root
           # Ensure strict permissions for working directories
           chown -R builder:builder .
+          mount --make-rshared /
+          mount --make-rshared /run
           bash build.sh
 
 
