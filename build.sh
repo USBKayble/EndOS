@@ -384,7 +384,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel fontforge python-fonttools polkit-qt6
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel fontforge python-fonttools polkit-qt6
         else
             echo "    Using existing build chroot..."
             # Update the chroot
@@ -667,12 +667,13 @@ echo "    Required packages: $REQUIRED_COUNT"
 if [ ! -d "$CHROOT_DIR/root" ]; then
     echo "    Creating wheel build chroot..."
     mkdir -p "$CHROOT_DIR"
-    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel python \
+    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel python libjpeg-turbo zlib \
         meson ninja patchelf python-build cairo gobject-introspection \
         wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
 else
     echo "    Installing Python wheel build dependencies in chroot..."
     arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+        libjpeg-turbo zlib \
         meson ninja patchelf python-build cairo gobject-introspection \
         wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
 fi
