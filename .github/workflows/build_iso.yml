@@ -1,32 +1,72 @@
 name: Build EndOS ISO
 
 on:
+  schedule:
+    - cron: '0 0 * * *'
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'iso/**'
+      - 'build.sh'
+      - '.github/workflows/build_iso.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decision.outputs.should_build }}
+      commit_sha: ${{ steps.get_sha.outputs.sha }}
+    steps:
+      - name: Get latest dots-hyprland commit
+        id: get_sha
+        run: |
+          SHA=$(curl -s "https://api.github.com/repos/end-4/dots-hyprland/commits/main" | jq -r .sha)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Check cache for commit
+        id: check_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: dots_version.txt
+          key: dots-hyprland-${{ steps.get_sha.outputs.sha }}
+          lookup-only: true
+
+      - name: Decide whether to build
+        id: decision
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" && "${{ steps.check_cache.outputs.cache-hit }}" == "true" ]]; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: check-updates
+    if: needs.check-updates.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
       options: --privileged
-    timeout-minutes: 300
+    timeout-minutes: 360
 
     steps:
-      - name: Initialize pacman and install prerequisites
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Arch Linux environment
         run: |
           pacman-key --init
           pacman-key --populate archlinux
           pacman -Syu --noconfirm
-          pacman -S --needed --noconfirm git nodejs sudo
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
+          pacman -S --noconfirm --needed \
+            base-devel git archiso rsync python python-pip \
+            curl wget sudo meson ninja patchelf python-build
 
       - name: Cache built packages
         uses: actions/cache@v4
@@ -37,12 +77,119 @@ jobs:
             pkg-cache-
 
       - name: Build ISO
-        run: bash build.sh
+        run: |
+          # Fix systemd-nspawn propagation failure in Docker containers.
+          # When /run is backed by overlayfs, systemd refuses to unmount the
+          # propagation directory it creates, exiting with code 1.
+          # Mounting a fresh tmpfs on /run/systemd/nspawn makes the propagation
+          # directory live on tmpfs so systemd-nspawn can clean it up properly.
+          mkdir -p /run/systemd/nspawn
+          mount -t tmpfs tmpfs /run/systemd/nspawn
 
-      - name: Upload ISO artifact
-        if: success()
+          # Start D-Bus so post-install hooks inside the chroot can communicate
+          # with it (e.g. "Updating the desktop file MIME type cache").
+          mkdir -p /run/dbus
+          dbus-daemon --system --fork || true
+
+          bash build.sh
+
+      - name: Upload build log on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: EndOS-ISO-${{ github.sha }}
-          path: out/*.iso
+          name: build-log-${{ github.run_number }}
+          path: build.log
           retention-days: 7
+
+      - name: Notify on failure via Discord webhook
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          # Skip notification when the secret is not configured
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then exit 0; fi
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "content": "❌ EndOS build failed for commit ${{ github.sha }}. Check the logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "embeds": [{
+              "title": "Build Failure Details",
+              "description": "See attached build log artifact for details.",
+              "color": 15158332,
+              "fields": [{
+                "name": "Workflow",
+                "value": "${{ github.workflow }}",
+                "inline": true
+              }, {
+                "name": "Commit",
+                "value": "${{ github.sha }}",
+                "inline": true
+              }, {
+                "name": "Run",
+                "value": "${{ github.run_number }}",
+                "inline": true
+              }]
+            }]
+          }' "$DISCORD_WEBHOOK_URL"
+
+      - name: Split ISO for Release
+        if: success()
+        run: |
+          cd out
+          ISO_FILE=$(ls endos-*.iso | head -n 1)
+          SHA256=$(sha256sum "$ISO_FILE" | cut -d ' ' -f 1)
+          echo "ISO_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "ISO_NAME=$ISO_FILE" >> $GITHUB_ENV
+
+          echo "Splitting $ISO_FILE into 2GB chunks..."
+          split -b 2000M -d "$ISO_FILE" "endos-part"
+          rm "$ISO_FILE"
+          ls -lh
+
+      - name: Generate Release Tag
+        if: success()
+        id: tag
+        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Publish Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ steps.tag.outputs.date }}
+          name: EndOS Build ${{ steps.tag.outputs.date }}
+          body: |
+            Automated build of EndOS.
+
+            **ISO File**: `${{ env.ISO_NAME }}`
+            **SHA256 Checksum**: `${{ env.ISO_SHA256 }}`
+
+            ## Installation Instructions
+
+            The ISO has been split into 2GB parts to satisfy GitHub's file size limits.
+
+            **To combine the parts:**
+            ```bash
+            # Linux/macOS
+            cat endos-part* > ${{ env.ISO_NAME }}
+            ```
+            ```cmd
+            # Windows (Command Prompt)
+            copy /b endos-part* ${{ env.ISO_NAME }}
+            ```
+
+            **Verify the checksum:**
+            ```bash
+            sha256sum ${{ env.ISO_NAME }}
+            # Should match: ${{ env.ISO_SHA256 }}
+            ```
+          files: |
+            out/endos-part*
+
+      - name: Prepare cache file
+        if: success()
+        run: touch dots_version.txt
+
+      - name: Save build cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: dots_version.txt
+          key: dots-hyprland-${{ needs.check-updates.outputs.commit_sha }}
