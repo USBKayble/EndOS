@@ -27,13 +27,13 @@ fi
 # Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
 mount --make-rshared / || true
 
-# Make /run a mountpoint if it isn't one, then make it shared
+# Make /run a mountpoint if it isn't one, then make it slave to prevent leak
 mountpoint -q /run || mount --bind /run /run || true
-mount --make-rshared /run || true
+mount --make-rslave /run || true
 
-# Make the workspace directory a mountpoint and shared
+# Make the workspace directory a mountpoint and slave
 mount --bind "$SCRIPT_DIR" "$SCRIPT_DIR" || true
-mount --make-rshared "$SCRIPT_DIR" || true
+mount --make-rslave "$SCRIPT_DIR" || true
 
 systemd-machine-id-setup || true
 
