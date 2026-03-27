@@ -102,6 +102,7 @@ jobs:
           # Ensure strict permissions for working directories
           chown -R builder:builder .
           mount --make-rshared /
+          mount --bind /run /run
           mount --make-rshared /run
           bash build.sh
 
