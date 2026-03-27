@@ -354,7 +354,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
-    chmod 777 "$TEMP_DB_PATH"
+    chown -R 1000:1000 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
     if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
@@ -398,7 +398,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
-        chmod 777 "$BUILD_DIR"
+        chown -R 1000:1000 "$BUILD_DIR"
 
         # ====================================================================
         # DYNAMIC DEPENDENCY RESOLUTION
@@ -546,7 +546,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
-                chmod 777 "$BUILD_SUBDIR"
+                chown -R 1000:1000 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
@@ -580,7 +580,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
-                chmod -R 777 .
+                chown -R 1000:1000 .
 
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
