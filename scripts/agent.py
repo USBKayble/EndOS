@@ -14,9 +14,9 @@ REPO = os.environ["GITHUB_REPOSITORY"]
 HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Content-Type": "application/json",
-    "Copilot-Integration-Id": "vscode-chat",
-    "Editor-Version": "vscode/1.100.0",
-    "Editor-Plugin-Version": "copilot-chat/0.26.0",
+    # Server-side integration headers — no VS Code spoofing
+    "Copilot-Integration-Id": "github-actions",
+    "X-GitHub-Token": GITHUB_TOKEN,
 }
 
 STATE_FILE = ".github/agent-state.json"
@@ -130,6 +130,8 @@ TOOLS = [
 
 # ── Tool handlers ──────────────────────────────────────────────────────────────
 def handle_tool(name, args):
+    branch = os.environ.get("AGENT_BRANCH", "agent/fix-unknown")
+
     if name == "read_file":
         try:
             return open(args["path"]).read()
@@ -161,16 +163,22 @@ def handle_tool(name, args):
         state = {"summary": args["summary"], "next_action": args["next_action"], "ts": time.time()}
         os.makedirs(".github", exist_ok=True)
         open(STATE_FILE, "w").write(json.dumps(state, indent=2))
-        subprocess.run("git add .github/agent-state.json && git commit -m 'chore: update agent state' && git push", shell=True)
+        subprocess.run(
+            f"git add {STATE_FILE} && git commit -m 'chore: update agent state' && git push -u origin {branch}",
+            shell=True
+        )
         return "state saved"
 
     elif name == "done":
         print(f"\n✅ Agent complete: {args['summary']}")
-        # Clear state file on clean completion
         if os.path.exists(STATE_FILE):
             os.remove(STATE_FILE)
-            subprocess.run("git add .github/agent-state.json && git commit -m 'chore: clear agent state' && git push 2>/dev/null || true", shell=True)
+            subprocess.run(
+                f"git add {STATE_FILE} && git commit -m 'chore: clear agent state' && git push -u origin {branch} 2>/dev/null || true",
+                shell=True
+            )
         sys.exit(0)
+
 
 def poll_github(event_type, target_id, timeout=270):
     gh_headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
@@ -208,8 +216,15 @@ def poll_github(event_type, target_id, timeout=270):
 
     return "timeout — CI did not resolve within 4.5 minutes, check manually"
 
+
 # ── Main agent loop ────────────────────────────────────────────────────────────
 def run_agent(task_prompt: str):
+    # Always work on a dedicated branch, never push directly to main
+    branch = f"agent/fix-{int(time.time())}"
+    subprocess.run(f"git checkout -b {branch}", shell=True)
+    os.environ["AGENT_BRANCH"] = branch
+    print(f"🌿 Working on branch: {branch}")
+
     with open(".github/copilot-instructions.md") as f:
         system_prompt = f.read()
 
@@ -252,7 +267,6 @@ def run_agent(task_prompt: str):
             print(f"⚠️  Connection lost: {e}")
             print("💾 Saving state and triggering rekick...")
 
-            # Save whatever we have so far
             last_assistant = next(
                 (m["content"] for m in reversed(messages) if m["role"] == "assistant"),
                 "No progress recorded"
@@ -261,11 +275,10 @@ def run_agent(task_prompt: str):
             os.makedirs(".github", exist_ok=True)
             open(STATE_FILE, "w").write(json.dumps(state, indent=2))
             subprocess.run(
-                f"git add {STATE_FILE} && git commit -m 'chore: agent disconnect - saving state' && git push",
+                f"git add {STATE_FILE} && git commit -m 'chore: agent disconnect - saving state' && git push -u origin {branch}",
                 shell=True
             )
 
-            # Trigger a new workflow run via repository dispatch
             requests.post(
                 f"https://api.github.com/repos/{REPO}/dispatches",
                 headers={"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"},
@@ -276,14 +289,16 @@ def run_agent(task_prompt: str):
 
         choice = data["choices"][0]
         msg = choice["message"]
-        messages.append({"role": "assistant", "content": msg.get("content") or "", **({"tool_calls": msg["tool_calls"]} if msg.get("tool_calls") else {})})
+        messages.append({
+            "role": "assistant",
+            "content": msg.get("content") or "",
+            **({"tool_calls": msg["tool_calls"]} if msg.get("tool_calls") else {})
+        })
 
-        # No tool calls = model finished without calling done()
         if not msg.get("tool_calls"):
             print(msg.get("content", ""))
             break
 
-        # Process all tool calls in this turn
         for call in msg["tool_calls"]:
             fn_name = call["function"]["name"]
             fn_args = json.loads(call["function"]["arguments"])
@@ -296,6 +311,7 @@ def run_agent(task_prompt: str):
                 "tool_call_id": call["id"],
                 "content": str(result)
             })
+
 
 if __name__ == "__main__":
     run_agent(" ".join(sys.argv[1:]))
