@@ -38,7 +38,10 @@ pip --version
 # We use --no-index and --find-links to force using our local wheels
 # We add --no-cache-dir to avoid populating /root/.cache inside the ISO
 echo "Installing packages..."
-pip install --no-cache-dir --no-index --find-links "$WHEELS_DIR" -r "$REQ_FILE"
+if ! pip install --no-cache-dir --no-index --find-links "$WHEELS_DIR" -r "$REQ_FILE"; then
+    echo "ERROR: Failed to install Python dependencies in customize_airootfs.sh."
+    exit 1
+fi
 
 echo "Verifying installation..."
 pip list

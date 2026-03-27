@@ -93,6 +93,7 @@ squashfs-tools
 sudo
 syslinux
 systemd-resolvconf
+systemd-sysvcompat
 tcpdump
 terminus-font
 testdisk

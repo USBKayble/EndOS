@@ -24,6 +24,11 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
+mount --make-rshared / || true
+mount --make-rshared /run || true
+systemd-machine-id-setup || true
+
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
 REPO_DIR="dots-hyprland"
@@ -354,7 +359,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
-    chmod 777 "$TEMP_DB_PATH"
+    chown -R 1000:1000 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
     if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
@@ -384,7 +389,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel fontforge python-fonttools polkit-qt6
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
         else
             echo "    Using existing build chroot..."
             # Update the chroot
@@ -398,7 +403,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
-        chmod 777 "$BUILD_DIR"
+        chown -R 1000:1000 "$BUILD_DIR"
 
         # ====================================================================
         # DYNAMIC DEPENDENCY RESOLUTION
@@ -546,7 +551,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
-                chmod 777 "$BUILD_SUBDIR"
+                chown -R 1000:1000 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
@@ -580,7 +585,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
-                chmod -R 777 .
+                chown -R 1000:1000 .
 
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
@@ -667,14 +672,16 @@ echo "    Required packages: $REQUIRED_COUNT"
 if [ ! -d "$CHROOT_DIR/root" ]; then
     echo "    Creating wheel build chroot..."
     mkdir -p "$CHROOT_DIR"
-    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel python \
+    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
         meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+        libjpeg-turbo zlib
 else
     echo "    Installing Python wheel build dependencies in chroot..."
     arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
         meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+        libjpeg-turbo zlib
 fi
 
 # Copy requirements.txt into chroot and create wheels directory
