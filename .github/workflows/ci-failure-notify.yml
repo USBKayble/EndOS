@@ -1,0 +1,77 @@
+name: CI Failure Notify
+
+on:
+  workflow_run:
+    types: [completed]
+
+jobs:
+  notify-on-failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gather context
+        id: ctx
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const run = github.context.payload.workflow_run;
+            const prNumbers = (run.pull_requests || []).map(pr => pr.number);
+            return {
+              head_sha: run.head_sha,
+              workflow: run.name,
+              run_id: run.id,
+              html_url: run.html_url,
+              prs: prNumbers
+            };
+      - name: Create or update failure issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const ctx = JSON.parse(process.env.GITHUB_CONTEXT || '{}');
+            const run = github.context.payload.workflow_run;
+            const title = `CI Failure: ${run.name} — ${run.head_sha.substring(0,7)}`;
+            const body = `The workflow **${run.name}** failed on commit ${run.head_sha}.
+
+Run: ${run.html_url}
+
+Triggered by: ${run.event}
+
+Associated PRs: ${(run.pull_requests || []).map(p=>p.html_url).join('\n') || 'None'}\n\n` +
+              `Automated triage: I'll attempt to diagnose and open follow-ups when possible.`;
+            // create an issue so failures are tracked
+            const { data } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci','failure','needs-triage']
+            });
+            core.setOutput('issue_number', data.number);
+      - name: Comment on related PRs
+        if: ${{ steps.ctx.outputs.prs != '' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = github.context.payload.workflow_run;
+            const prs = run.pull_requests || [];
+            for (const pr of prs) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `Heads up: the CI workflow **${run.name}** failed for this PR. See the run: ${run.html_url} \n\nI have opened an issue to track the failure.`
+              });
+            }
+      - name: Notify Discord webhook (requires DISCORD_WEBHOOK secret)
+        if: ${{ secrets.DISCORD_WEBHOOK }}
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          run_url="${{ github.event.workflow_run.html_url }}"
+          wf_name="${{ github.event.workflow_run.name }}"
+          sha="${{ github.event.workflow_run.head_sha }}"
+          repo="${{ github.repository }}"
+          json=$(jq -n --arg repo "$repo" --arg wf "$wf_name" --arg sha "$sha" --arg run "$run_url" '{embeds:[{title:\"CI Failure\",description:("Workflow: " + $wf + "\nRepo: " + $repo + "\nCommit: " + $sha + "\nRun: " + $run),color:15158332}] }')
+          curl -s -H "Content-Type: application/json" -d "$json" "$WEBHOOK" || true
