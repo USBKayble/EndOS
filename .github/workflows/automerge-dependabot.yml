@@ -1,0 +1,69 @@
+name: Auto-merge Dependabot PRs
+
+on:
+  check_suite:
+    types: [completed]
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  pull-requests: write
+  checks: read
+  contents: read
+
+jobs:
+  auto-merge-dependabot:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: auto-merge-dependabot-${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - name: Determine candidate PRs
+        id: find
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ADMIN_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const ctx = github.context;
+            let prs = [];
+            if (ctx.eventName === 'check_suite') {
+              // find PRs that reference this head_sha
+              const head_sha = ctx.payload.check_suite.head_sha;
+              const { data: prSearch } = await github.rest.repos.listPullRequestsAssociatedWithCommit({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: head_sha });
+              prs = prSearch;
+            } else if (ctx.eventName === 'pull_request') {
+              prs = [ ctx.payload.pull_request ];
+            }
+            const candidates = prs.filter(p => p.user && p.user.login && (p.user.login === 'dependabot[bot]' || p.user.login === 'dependabot-preview[bot]' || p.user.login === 'dependabot')); // include common names
+            return { candidates: candidates.map(p => ({number: p.number, head_sha: p.head.sha, author: p.user.login })) };
+      - name: Attempt merges for candidates
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ADMIN_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const cand = JSON.parse(process.env.INPUT_CANDIDATES || '${{ steps.find.outputs.candidates }}');
+            const candidates = cand || [];
+            for (const c of candidates) {
+              try {
+                const pr = (await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: c.number })).data;
+                // ensure checks passed for the PR head
+                const ref = pr.head.sha;
+                const suites = (await github.request('GET /repos/{owner}/{repo}/check-suites-for-ref', { owner: context.repo.owner, repo: context.repo.repo, ref })).data.check_suites || [];
+                let allPassed = true;
+                for (const suite of suites) {
+                  const runs = (await github.rest.checks.listForSuite({ owner: context.repo.owner, repo: context.repo.repo, check_suite_id: suite.id })).data.check_runs || [];
+                  for (const run of runs) {
+                    if (run.conclusion !== 'success') { allPassed = false; break; }
+                  }
+                  if (!allPassed) break;
+                }
+                if (!allPassed) { core.info(`Skipping #${c.number}: checks not all successful.`); continue; }
+                // Merge using squash
+                await github.rest.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: c.number, merge_method: 'squash' });
+                await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: c.number, body: 'Auto-merged dependabot PR: all checks passed.' });
+              } catch (e) {
+                core.info('Auto-merge attempt failed for #' + c.number + ': ' + e.message);
+              }
+            }
+        env:
+          INPUT_CANDIDATES: ${{ steps.find.outputs.candidates }}
