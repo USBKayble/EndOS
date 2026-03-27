@@ -98,12 +98,11 @@ jobs:
 
       - name: Build ISO
         run: |
-          # Run the build script as the builder user
+          # Run the build script as root
           # Ensure strict permissions for working directories
           chown -R builder:builder .
-          sudo -u builder bash build.sh
-        env:
-          HOME: /home/builder
+          bash build.sh
+
 
       - name: Upload build log on failure
         if: failure()
