@@ -1,0 +1,212 @@
+﻿2026-03-27T07:11:38.6839902Z ##[group]Run github/dependabot-action@main
+2026-03-27T07:11:38.6840594Z env:
+2026-03-27T07:11:38.6841022Z   DEPENDABOT_DISABLE_CLEANUP: 1
+2026-03-27T07:11:38.6841591Z   DEPENDABOT_ENABLE_CONNECTIVITY_CHECK: 0
+2026-03-27T07:11:38.6842450Z   GITHUB_TOKEN: ***
+2026-03-27T07:11:38.6843311Z   GITHUB_DEPENDABOT_JOB_TOKEN: ***
+2026-03-27T07:11:38.6844291Z   GITHUB_DEPENDABOT_CRED_TOKEN: ***
+2026-03-27T07:11:38.6844844Z   GITHUB_REGISTRIES_PROXY: 
+2026-03-27T07:11:38.6845339Z ##[endgroup]
+2026-03-27T07:11:38.8961400Z 🤖 ~ starting update ~
+2026-03-27T07:11:38.8978370Z Fetching job details
+2026-03-27T07:11:39.2435337Z 🤖 ~ Failed to parse GITHUB_REGISTRIES_PROXY environment variable ~
+2026-03-27T07:11:39.2438649Z ##[group]Pulling updater images
+2026-03-27T07:11:39.2496137Z Pulling image ghcr.io/dependabot/dependabot-updater-github-actions:1d554e9038c3130c566cb3b26d0cdd8d66ef6d8c (attempt 1)...
+2026-03-27T07:11:39.3034167Z Successfully sent metric (dependabot.action.ghcr_image_pull) to remote API endpoint
+2026-03-27T07:11:50.7967230Z Pulled image ghcr.io/dependabot/dependabot-updater-github-actions:1d554e9038c3130c566cb3b26d0cdd8d66ef6d8c
+2026-03-27T07:11:50.7979265Z Pulling image ghcr.io/dependabot/proxy:v2.0.20260317021138@sha256:b15dfd93b7f538b5a9a3552d7a3496a64d94f289c0f1a6facb6896fd589d4a58 (attempt 1)...
+2026-03-27T07:11:50.8448022Z Successfully sent metric (dependabot.action.ghcr_image_pull) to remote API endpoint
+2026-03-27T07:11:51.2189402Z Pulled image ghcr.io/dependabot/proxy:v2.0.20260317021138@sha256:b15dfd93b7f538b5a9a3552d7a3496a64d94f289c0f1a6facb6896fd589d4a58
+2026-03-27T07:11:51.2191612Z ##[endgroup]
+2026-03-27T07:11:51.2192116Z Starting update process
+2026-03-27T07:11:51.4713878Z Created proxy container: a91c51cf2868483b0f053f9f495de96336db5efa293b6c856f53ac2272d543e8
+2026-03-27T07:11:51.6466336Z Created container: e17095d17b475a0c65e072260a25a37737ad7c2fff3f0bb7eb093c0fc143de7d
+2026-03-27T07:11:51.7575920Z Started container e17095d17b475a0c65e072260a25a37737ad7c2fff3f0bb7eb093c0fc143de7d
+2026-03-27T07:11:51.8251639Z   proxy | 2026/03/27 07:11:51 proxy starting, commit: 85820b3bc57308c239dd0275deb0cc036773e144
+2026-03-27T07:11:51.8254705Z   proxy | 2026/03/27 07:11:51 Listening (:1080)
+2026-03-27T07:11:51.8491304Z updater | Updating certificates in /etc/ssl/certs...
+2026-03-27T07:11:52.6990858Z updater | rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-03-27T07:11:52.7192779Z updater | 1 added, 0 removed; done.
+2026-03-27T07:11:52.7193816Z Running hooks in /etc/ca-certificates/update.d...
+2026-03-27T07:11:52.7249445Z updater | done.
+2026-03-27T07:11:53.0422872Z updater | fetch_files command is no longer used directly
+2026-03-27T07:11:54.8956819Z updater | 2026/03/27 07:11:54 INFO <job_1295968405> Starting job processing
+2026-03-27T07:11:54.8968118Z updater | 2026/03/27 07:11:54 INFO <job_1295968405> Job definition: {"job":{"command":"version","allowed-updates":[{"dependency-type":"direct","update-type":"all"}],"commit-message-options":{"prefix":null,"prefix-development":null,"include-scope":null},"credentials-metadata":[{"type":"git_source","host":"github.com"}],"debug":null,"dependencies":null,"dependency-groups":[],"dependency-group-to-refresh":null,"existing-pull-requests":[],"existing-group-pull-requests":[],"experiments":{"record-ecosystem-versions":true,"record-update-job-unknown-error":true,"proxy-cached":true,"enable-corepack-for-npm-and-yarn":true,"enable-private-registry-for-corepack":true,"allow-refresh-for-existing-pr-dependencies":true,"allow-refresh-group-with-all-dependencies":true,"azure-registry-backup":true,"enable-enhanced-error-details-for-updater":true,"gradle-lockfile-updater":true,"enable-exclude-paths-subdirectory-manifest-files":true,"group-membership-enforcement":true,"enable-swift-xcode-spm":true},"ignore-conditions":[],"lockfile-only":false,"max-updater-run-time":2700,"package-manager":"github_actions","requirements-update-strategy":null,"reject-external-code":false,"security-advisories":[],"security-updates-only":false,"source":{"provider":"github","repo":"USBKayble/EndOS","branch":null,"directory":"/.","api-endpoint":"https://api.github.com/","hostname":"github.com"},"updating-a-pull-request":false,"update-subdependencies":false,"vendor-dependencies":false,"enable-beta-ecosystems":false,"repo-private":false,"multi-ecosystem-update":false,"exclude-paths":null}}
+2026-03-27T07:11:54.9915902Z   proxy | 2026/03/27 07:11:54 [002] GET https://github.com:443/USBKayble/EndOS.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:54.9917165Z 2026/03/27 07:11:54 [002] * authenticating git server request (host: github.com)
+2026-03-27T07:11:55.0580491Z   proxy | 2026/03/27 07:11:55 [002] 200 https://github.com:443/USBKayble/EndOS.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:55.0930904Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1096 with command: {} git config --global credential.helper '!/home/dependabot/common/lib/dependabot/../../bin/git-credential-store-immutable --file /home/dependabot/dependabot-updater/git.store' {}
+2026-03-27T07:11:55.0979971Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1096 completed with status: pid 1096 exit 0
+2026-03-27T07:11:55.0982467Z 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.0994409Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1104 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:55.1038535Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1104 completed with status: pid 1104 exit 0
+2026-03-27T07:11:55.1039619Z 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1056805Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1111 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:55.1103124Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1111 completed with status: pid 1111 exit 0
+2026-03-27T07:11:55.1104795Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1133101Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1117 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:55.1147093Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1117 completed with status: pid 1117 exit 0
+2026-03-27T07:11:55.1151859Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:55.1162037Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1124 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:55.1197758Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1124 completed with status: pid 1124 exit 0
+2026-03-27T07:11:55.1201601Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:55.1207019Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1131 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:55.1331545Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1131 completed with status: pid 1131 exit 0
+2026-03-27T07:11:55.1332668Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1340142Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1138 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:55.1393281Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1138 completed with status: pid 1138 exit 0
+2026-03-27T07:11:55.1394282Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1404409Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1146 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:55.1472855Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1146 completed with status: pid 1146 exit 0
+2026-03-27T07:11:55.1476236Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1481654Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1153 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:55.1531511Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1153 completed with status: pid 1153 exit 0
+2026-03-27T07:11:55.1533111Z 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1540194Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1160 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:55.1584324Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1160 completed with status: pid 1160 exit 0
+2026-03-27T07:11:55.1586280Z 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:55.1594724Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1167 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:55.1626182Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Process PID: 1167 completed with status: pid 1167 exit 0
+2026-03-27T07:11:55.1627744Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:55.1637050Z updater | 2026/03/27 07:11:55 INFO <job_1295968405> Started process PID: 1174 with command: {} git clone --no-tags --depth 1 --recurse-submodules --shallow-submodules https://github.com/USBKayble/EndOS /home/dependabot/dependabot-updater/repo {}
+2026-03-27T07:11:55.4279070Z   proxy | 2026/03/27 07:11:55 [004] GET https://github.com:443/USBKayble/EndOS/info/refs?service=git-upload-pack
+2026-03-27T07:11:55.4279850Z 2026/03/27 07:11:55 [004] * authenticating git server request (host: github.com)
+2026-03-27T07:11:55.4756937Z   proxy | 2026/03/27 07:11:55 [004] 200 https://github.com:443/USBKayble/EndOS/info/refs?service=git-upload-pack
+2026-03-27T07:11:55.5137036Z   proxy | 2026/03/27 07:11:55 [006] POST https://github.com:443/USBKayble/EndOS/git-upload-pack
+2026-03-27T07:11:55.5137821Z 2026/03/27 07:11:55 [006] * authenticating git server request (host: github.com)
+2026-03-27T07:11:55.5600985Z   proxy | 2026/03/27 07:11:55 [006] 200 https://github.com:443/USBKayble/EndOS/git-upload-pack
+2026-03-27T07:11:55.6013472Z   proxy | 2026/03/27 07:11:55 [008] POST https://github.com:443/USBKayble/EndOS/git-upload-pack
+2026-03-27T07:11:55.6014238Z 2026/03/27 07:11:55 [008] * authenticating git server request (host: github.com)
+2026-03-27T07:11:55.7527376Z   proxy | 2026/03/27 07:11:55 [008] 200 https://github.com:443/USBKayble/EndOS/git-upload-pack
+2026-03-27T07:11:57.5944555Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1174 completed with status: pid 1174 exit 0
+2026-03-27T07:11:57.5945750Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 2.43 seconds
+2026-03-27T07:11:57.5987601Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1216 with command: {} git -C /home/dependabot/dependabot-updater/repo ls-files --stage {}
+2026-03-27T07:11:57.5994905Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1216 completed with status: pid 1216 exit 0
+2026-03-27T07:11:57.5995760Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6050186Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1231 with command: {} git config --global credential.helper '!/home/dependabot/common/lib/dependabot/../../bin/git-credential-store-immutable --file /home/dependabot/dependabot-updater/git.store' {}
+2026-03-27T07:11:57.6094371Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1231 completed with status: pid 1231 exit 0
+2026-03-27T07:11:57.6095259Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.6102463Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1240 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:57.6138468Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1240 completed with status: pid 1240 exit 0
+2026-03-27T07:11:57.6139777Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6165801Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1247 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:57.6187067Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1247 completed with status: pid 1247 exit 0
+2026-03-27T07:11:57.6190026Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6197128Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1255 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:57.6235163Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1255 completed with status: pid 1255 exit 0
+2026-03-27T07:11:57.6237179Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6251766Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1262 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:57.6285746Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1262 completed with status: pid 1262 exit 0
+2026-03-27T07:11:57.6287201Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.6296530Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1269 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:57.6349816Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1269 completed with status: pid 1269 exit 0
+2026-03-27T07:11:57.6351471Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.6357052Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1276 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:57.6401043Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1276 completed with status: pid 1276 exit 0
+2026-03-27T07:11:57.6401638Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6407376Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1283 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:57.6448587Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1283 completed with status: pid 1283 exit 0
+2026-03-27T07:11:57.6450414Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6453650Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1290 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:57.6493774Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1290 completed with status: pid 1290 exit 0
+2026-03-27T07:11:57.6494575Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6504006Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1297 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:57.6546232Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1297 completed with status: pid 1297 exit 0
+2026-03-27T07:11:57.6547085Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.6556040Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1304 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:57.6585547Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1304 completed with status: pid 1304 exit 0
+2026-03-27T07:11:57.6587713Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6592590Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1312 with command: {} git rev-parse HEAD {}
+2026-03-27T07:11:57.6628085Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1312 completed with status: pid 1312 exit 0
+2026-03-27T07:11:57.6629783Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6677482Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1327 with command: {} git config --global credential.helper '!/home/dependabot/common/lib/dependabot/../../bin/git-credential-store-immutable --file /home/dependabot/dependabot-updater/git.store' {}
+2026-03-27T07:11:57.6722280Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1327 completed with status: pid 1327 exit 0
+2026-03-27T07:11:57.6724102Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.6740379Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1335 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:57.6767675Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1335 completed with status: pid 1335 exit 0
+2026-03-27T07:11:57.6770405Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6774535Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1342 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:57.6810875Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1342 completed with status: pid 1342 exit 0
+2026-03-27T07:11:57.6813403Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6819717Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1349 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:57.6855242Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1349 completed with status: pid 1349 exit 0
+2026-03-27T07:11:57.6856335Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6865404Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1357 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:57.6895127Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1357 completed with status: pid 1357 exit 0
+2026-03-27T07:11:57.6895725Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6901424Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1364 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:57.6944727Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1364 completed with status: pid 1364 exit 0
+2026-03-27T07:11:57.6945597Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.6951493Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1372 with command: {} git config --global --replace-all url.https://github.com/.insteadOf ssh://git@github.com/ {}
+2026-03-27T07:11:57.6993821Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1372 completed with status: pid 1372 exit 0
+2026-03-27T07:11:57.6994757Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.01 seconds
+2026-03-27T07:11:57.7010311Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1379 with command: {} git config --global --add url.https://github.com/.insteadOf ssh://git@github.com: {}
+2026-03-27T07:11:57.7035827Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1379 completed with status: pid 1379 exit 0
+2026-03-27T07:11:57.7037552Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.7043907Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1386 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com: {}
+2026-03-27T07:11:57.7077849Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1386 completed with status: pid 1386 exit 0
+2026-03-27T07:11:57.7079050Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.7085780Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1393 with command: {} git config --global --add url.https://github.com/.insteadOf git@github.com/ {}
+2026-03-27T07:11:57.7127377Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1393 completed with status: pid 1393 exit 0
+2026-03-27T07:11:57.7128491Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.7134121Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1400 with command: {} git config --global --add url.https://github.com/.insteadOf git://github.com/ {}
+2026-03-27T07:11:57.7170930Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1400 completed with status: pid 1400 exit 0
+2026-03-27T07:11:57.7172341Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.7191442Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Started process PID: 1407 with command: {} git rev-parse HEAD {}
+2026-03-27T07:11:57.7217500Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Process PID: 1407 completed with status: pid 1407 exit 0
+2026-03-27T07:11:57.7218481Z 2026/03/27 07:11:57 INFO <job_1295968405> Total execution time: 0.0 seconds
+2026-03-27T07:11:57.7237051Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> DEBUG filter_excluded: entries=9, exclude_paths=[]
+2026-03-27T07:11:57.7254815Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Base commit SHA: 70da241108dbbad470d558efe208730b5e266251
+2026-03-27T07:11:57.7256581Z 2026/03/27 07:11:57 INFO <job_1295968405> Finished job processing
+2026-03-27T07:11:57.7264143Z updater | 2026/03/27 07:11:57 INFO <job_1295968405> Starting job processing
+2026-03-27T07:11:57.8245638Z   proxy | 2026/03/27 07:11:57 [010] GET https://github.com:443/actions/github-script.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:57.8246895Z 2026/03/27 07:11:57 [010] * authenticating git server request (host: github.com)
+2026-03-27T07:11:57.8678994Z   proxy | 2026/03/27 07:11:57 [010] 200 https://github.com:443/actions/github-script.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:57.9656091Z   proxy | 2026/03/27 07:11:57 [012] GET https://github.com:443/google-labs-code/jules-invoke.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:57.9657371Z 2026/03/27 07:11:57 [012] * authenticating git server request (host: github.com)
+2026-03-27T07:11:58.0093492Z   proxy | 2026/03/27 07:11:58 [012] 200 https://github.com:443/google-labs-code/jules-invoke.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.1366683Z   proxy | 2026/03/27 07:11:58 [014] GET https://github.com:443/actions/cache.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.1367748Z 2026/03/27 07:11:58 [014] * authenticating git server request (host: github.com)
+2026-03-27T07:11:58.1855446Z   proxy | 2026/03/27 07:11:58 [014] 200 https://github.com:443/actions/cache.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.3215679Z   proxy | 2026/03/27 07:11:58 [016] GET https://github.com:443/actions/checkout.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.3216751Z 2026/03/27 07:11:58 [016] * authenticating git server request (host: github.com)
+2026-03-27T07:11:58.3604446Z   proxy | 2026/03/27 07:11:58 [016] 200 https://github.com:443/actions/checkout.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.4586613Z   proxy | 2026/03/27 07:11:58 [018] GET https://github.com:443/actions/upload-artifact.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.4588019Z 2026/03/27 07:11:58 [018] * authenticating git server request (host: github.com)
+2026-03-27T07:11:58.4958342Z   proxy | 2026/03/27 07:11:58 [018] 200 https://github.com:443/actions/upload-artifact.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.6227573Z   proxy | 2026/03/27 07:11:58 [020] GET https://github.com:443/softprops/action-gh-release.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.6230639Z 2026/03/27 07:11:58 [020] * authenticating git server request (host: github.com)
+2026-03-27T07:11:58.6609602Z   proxy | 2026/03/27 07:11:58 [020] 200 https://github.com:443/softprops/action-gh-release.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.7585934Z   proxy | 2026/03/27 07:11:58 [022] GET https://github.com:443/actions/cache.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.7587827Z 2026/03/27 07:11:58 [022] 200 https://github.com:443/actions/cache.git/info/refs?service=git-upload-pack (cached)
+2026-03-27T07:11:58.8876552Z   proxy | 2026/03/27 07:11:58 [024] GET https://github.com:443/actions/github-script.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.8878302Z 2026/03/27 07:11:58 [024] 200 https://github.com:443/actions/github-script.git/info/refs?service=git-upload-pack (cached)
+2026-03-27T07:11:58.9847515Z   proxy | 2026/03/27 07:11:58 [026] GET https://github.com:443/google-labs-code/jules-invoke.git/info/refs?service=git-upload-pack
+2026-03-27T07:11:58.9850594Z 2026/03/27 07:11:58 [026] 200 https://github.com:443/google-labs-code/jules-invoke.git/info/refs?service=git-upload-pack (cached)
+2026-03-27T07:11:59.1192951Z   proxy | 2026/03/27 07:11:59 [028] POST /update_jobs/1295968405/record_update_job_error
+2026-03-27T07:11:59.1832295Z   proxy | 2026/03/27 07:11:59 [028] 204 /update_jobs/1295968405/record_update_job_error
+2026-03-27T07:11:59.3096409Z   proxy | 2026/03/27 07:11:59 [030] PATCH /update_jobs/1295968405/mark_as_processed
+2026-03-27T07:11:59.3756934Z   proxy | 2026/03/27 07:11:59 [030] 204 /update_jobs/1295968405/mark_as_processed
+2026-03-27T07:11:59.3787040Z updater | 2026/03/27 07:11:59 INFO <job_1295968405> Finished job processing
+2026-03-27T07:11:59.3798130Z updater | 2026/03/27 07:11:59 INFO Results:
+2026-03-27T07:11:59.3799236Z Dependabot encountered '1' error(s) during execution, please check the logs for more details.
+2026-03-27T07:11:59.3800377Z +--------------------------------------------------------------------------------------------------------+
+2026-03-27T07:11:59.3801351Z |                                                 Errors                                                 |
+2026-03-27T07:11:59.3802270Z +-------------------------------+------------------------------------------------------------------------+
+2026-03-27T07:11:59.3803195Z | Type                          | Details                                                                |
+2026-03-27T07:11:59.3804123Z +-------------------------------+------------------------------------------------------------------------+
+2026-03-27T07:11:59.3805086Z | dependency_file_not_parseable | {                                                                      |
+2026-03-27T07:11:59.3805907Z |                               |   "message": "/.github/workflows/ci-failure-notify.yml not parseable", |
+2026-03-27T07:11:59.3806768Z |                               |   "file-path": "/.github/workflows/ci-failure-notify.yml"              |
+2026-03-27T07:11:59.3807757Z |                               | }                                                                      |
+2026-03-27T07:11:59.3808420Z +-------------------------------+------------------------------------------------------------------------+
+2026-03-27T07:11:59.5000629Z Failure running container e17095d17b475a0c65e072260a25a37737ad7c2fff3f0bb7eb093c0fc143de7d: Error: Command failed with exit code 1: /bin/sh -c $DEPENDABOT_HOME/dependabot-updater/bin/run update_files
+2026-03-27T07:11:59.8040241Z Cleaned up container e17095d17b475a0c65e072260a25a37737ad7c2fff3f0bb7eb093c0fc143de7d
+2026-03-27T07:11:59.8125821Z   proxy | 2026/03/27 07:11:59 3/15 calls cached (20%)
+2026-03-27T07:11:59.8127941Z 2026/03/27 07:11:59 Posting metrics to remote API endpoint
+2026-03-27T07:12:00.1789931Z ##[error]Dependabot encountered an error performing the update
+
+Error: The updater encountered one or more errors.
+
+For more information see: https://github.com/USBKayble/EndOS/network/updates/1295968405 (write access to the repository is required to view the log)
+2026-03-27T07:12:00.1799037Z 🤖 ~ finished: error reported to Dependabot ~
