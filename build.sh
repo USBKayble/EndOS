@@ -669,12 +669,12 @@ if [ ! -d "$CHROOT_DIR/root" ]; then
     mkdir -p "$CHROOT_DIR"
     mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base-devel python \
         meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv libjpeg-turbo zlib
 else
     echo "    Installing Python wheel build dependencies in chroot..."
     arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
         meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv
+        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv libjpeg-turbo zlib
 fi
 
 # Copy requirements.txt into chroot and create wheels directory

@@ -121,7 +121,7 @@ if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
     # Install build dependencies if not already present
     sudo pacman -S --needed --noconfirm base-devel meson ninja patchelf python-build \
         cairo gobject-introspection wayland wayland-protocols dbus dbus-glib \
-        python-dbus libffi glib2 openblas lapack uv 2>/dev/null || true
+        python-dbus libffi glib2 openblas lapack uv libjpeg-turbo zlib 2>/dev/null || true
     
     # Create a temporary Python 3.14 venv for downloading
     TEMP_VENV="/tmp/endos-wheel-builder-$$"
