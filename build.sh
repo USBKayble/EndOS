@@ -314,11 +314,17 @@ done
 
 # Check if any packages from our list are missing entirely from the local cache
 # (This catches cases where a build failed or was interrupted)
+
+shopt -s nullglob
+EXISTING_PKGS=("$HOST_REPO_DIR"/*.pkg.tar.zst)
+EXISTING_PKGS_STR="${EXISTING_PKGS[*]}"
+shopt -u nullglob
+
 for pkg_name in $(grep -vE "^\s*#|^\s*$" "$PKG_LIST_FILE"); do
     # Search for a file starting with the package name and having a version suffix
     # We use a more flexible search for the version (can start with v or digit)
-    if ! ls "$HOST_REPO_DIR"/"$pkg_name"-[v0-9]*.pkg.tar.zst >/dev/null 2>&1 && \
-       ! ls "$HOST_REPO_DIR"/"$pkg_name"-[a-z0-9]*.pkg.tar.zst >/dev/null 2>&1; then
+    # Check using bash string matching to avoid repeated `ls` subshell overhead
+    if [[ ! "$EXISTING_PKGS_STR" =~ "$HOST_REPO_DIR/${pkg_name}-"[v0-9a-z] ]]; then
         # Check if it might be provided by a different file name (e.g. from an alias)
         # We also check if it exists in system repos - if not, and not in local, it's missing.
         if ! pacman -Si "$pkg_name" >/dev/null 2>&1; then
@@ -772,20 +778,25 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
     shopt -s nullglob
     WHEEL_FILES=$(ls "$WHEELS_DIR"/*.whl "$WHEELS_DIR"/*.tar.gz 2>/dev/null)
     shopt -u nullglob
+    WHEEL_FILES_LOWER=${WHEEL_FILES,,}
 
     while IFS= read -r line; do
         # Skip comments and empty lines
-        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+        [[ "$line" == "#"* || -z "$line" ]] && continue
         
         # Extract package name (before ==, >=, etc.) and create both hyphen and underscore variants
-        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_.-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
-        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
+        # Using bash parameter expansion instead of subshells for performance
+        if [[ "$line" =~ ^([a-zA-Z0-9_.-]+) ]]; then
+            pkg_base="${BASH_REMATCH[1]}"
+            pkg_base="${pkg_base,,}"
+            pkg_hyphen="${pkg_base//_/-}"
+            pkg_underscore="${pkg_base//-/_}"
 
-        # Check if a file matching either the hyphenated or underscored package name exists.
-        # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
-        if ! echo "$WHEEL_FILES" | grep -q -i -e "/${pkg_hyphen}-" -e "/${pkg_underscore}-"; then
-            MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            # Check if a file matching either the hyphenated or underscored package name exists.
+            # Use bash substring matching instead of grep
+            if [[ ! "$WHEEL_FILES_LOWER" == *"/$pkg_hyphen-"* ]] && [[ ! "$WHEEL_FILES_LOWER" == *"/$pkg_underscore-"* ]]; then
+                MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            fi
         fi
     done < "$REQ_FILE"
     
