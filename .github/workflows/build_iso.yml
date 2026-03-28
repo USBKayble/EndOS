@@ -95,8 +95,8 @@ jobs:
           systemd-machine-id-setup || true
 
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
-          mount --make-rprivate / || true
-          mount --make-rprivate /run || true
+          mount --make-rshared / || true
+          mount --make-rshared /run || true
 
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh

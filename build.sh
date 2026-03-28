@@ -26,8 +26,8 @@ fi
 
 # Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
 systemd-machine-id-setup || true
-mount --make-rprivate / || true
-mount --make-rprivate /run || true
+mount --make-rshared / || true
+mount --make-rshared /run || true
 
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
