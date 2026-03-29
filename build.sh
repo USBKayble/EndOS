@@ -24,6 +24,15 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# In containerized environments (like GitHub Actions) where $SUDO_USER is empty or root,
+# explicitly create a build user and export SUDO_USER for makechrootpkg to use.
+if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = "root" ]; then
+    if ! id "builduser" >/dev/null 2>&1; then
+        useradd -m builduser
+    fi
+    export SUDO_USER="builduser"
+fi
+
 # Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
 mount --make-rshared / || true
 mount --make-rshared /run || true
@@ -364,6 +373,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
+    chmod 755 "$TEMP_DB_PATH"
     chown -R 1000:1000 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
@@ -408,6 +418,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
+        chmod 755 "$BUILD_DIR"
         chown -R 1000:1000 "$BUILD_DIR"
 
         # ====================================================================
@@ -560,6 +571,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
+                chmod 755 "$BUILD_SUBDIR"
                 chown -R 1000:1000 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
