@@ -82,8 +82,7 @@ jobs:
             meson \
             ninja \
             patchelf \
-            python-build \
-            github-cli
+            python-build
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf
@@ -110,42 +109,6 @@ jobs:
           name: build-log-${{ github.run_number }}
           path: build.log
           retention-days: 7
-
-      - name: Post failure logs to PR
-        if: failure() && github.event_name == 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          # Fix "fatal: not a git repository" error in container
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-          LOG_TAIL=""
-          if [ -f "build.log" ]; then
-            LOG_TAIL=$(tail -n 100 build.log)
-          else
-            LOG_TAIL="build.log not found."
-          fi
-
-          COMMENT_BODY="## ❌ Build ISO Workflow Failed
-
-          **Run Number:** ${{ github.run_number }}
-          **Commit:** ${{ github.event.pull_request.head.sha }}
-
-          You can view the full build logs in the [Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-
-          <details>
-          <summary><b>Last 100 lines of build.log</b></summary>
-
-          \`\`\`
-          $LOG_TAIL
-          \`\`\`
-
-          </details>"
-
-          # Write to a file to preserve formatting and handle special characters
-          echo "$COMMENT_BODY" > pr_comment.md
-          gh pr comment ${{ github.event.pull_request.number }} --body-file pr_comment.md
 
       - name: Split ISO for Release
         run: |
