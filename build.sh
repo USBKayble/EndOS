@@ -888,6 +888,20 @@ if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
     echo "    $(ls "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l) packages ready"
 fi
 
+# Ensure the alpm user inside mkarchiso can traverse the path to local_repo (Fixes "target not found" in GitHub Actions)
+if [ "$GITHUB_ACTIONS" = "true" ]; then
+    echo "    Fixing traversal permissions for mkarchiso alpm user in CI..."
+    current_dir="$HOST_REPO_DIR"
+    while [ "$current_dir" != "/" ] && [ -n "$current_dir" ]; do
+        chmod a+rx "$current_dir" 2>/dev/null || true
+        current_dir=$(dirname "$current_dir")
+    done
+    chmod a+rx "/" 2>/dev/null || true
+fi
+
+# Explicitly ensure the repo files are readable by everyone
+chmod -R a+rX "$HOST_REPO_DIR"
+
 # Use pacman-build.conf for mkarchiso (has local_repo enabled)
 sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" -C "$ISO_DIR/pacman-build.conf" "$ISO_DIR"
 
