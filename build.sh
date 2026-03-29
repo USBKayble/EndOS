@@ -284,6 +284,10 @@ LOCAL_REPO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
 mkdir -p "$HOST_REPO_DIR"
 mkdir -p "$LOCAL_REPO_DIR"
 
+# Ensure the repository is readable by alpm and other unprivileged users
+chmod 755 "$HOST_REPO_DIR"
+chmod 755 "$LOCAL_REPO_DIR"
+
 # Pre-emptive strike: Sync host repositories to ISO pacman.conf
 # This ensures mkarchiso can see extra repos if the user has them enabled.
 # Note: chaotic-aur removed - user prefers building AUR packages directly
@@ -359,6 +363,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
+    chmod 755 "$TEMP_DB_PATH"
     if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
         chown -R "$SUDO_USER" "$TEMP_DB_PATH"
     else
@@ -427,6 +432,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
+        chmod 755 "$BUILD_DIR"
         if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
             chown -R "$SUDO_USER" "$BUILD_DIR"
         else
@@ -579,6 +585,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
+                chmod 755 "$BUILD_SUBDIR"
 
                 if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
                     chown -R "$SUDO_USER" "$BUILD_SUBDIR"
@@ -647,6 +654,9 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 # Copy built packages to our local repo
                 cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
                 
+                # Fix permissions in HOST_REPO_DIR so subsequent makepkg/alpm builds can read it
+                chmod 644 "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null || true
+
                 # Strict verification: Check if any new package file appeared in PKGDEST
                 if [ -z "$(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2)" ]; then
                     echo "        ERROR: Build completed but no new package file found for $pkg (built as $BUILD_PKG)."
@@ -661,8 +671,10 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             # This ensures dependencies can find it when they're built next
             echo "        Updating local repository database..."
             for newpkg in $(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2); do
+                chmod 644 "$newpkg" 2>/dev/null || true
                 repo-add "$HOST_REPO_DIR/local_repo.db.tar.gz" "$newpkg" 2>/dev/null || true
             done
+            chmod 644 "$HOST_REPO_DIR"/* 2>/dev/null || true
             
             # Sync pacman database so the next package can find this dependency
             sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH" >/dev/null 2>&1 || true
@@ -679,13 +691,18 @@ echo "    Syncing local packages to ISO..."
 # Create the repo directory in the ISO root
 LOCAL_REPO_ISO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
 mkdir -p "$LOCAL_REPO_ISO_DIR"
+chmod 755 "$LOCAL_REPO_ISO_DIR"
 
 # Copy ALL packages from the host repo cache (includes official + custom)
 # We assume HOST_REPO_DIR contains everything because we ran 'pacman -Syw' earlier
 cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_ISO_DIR/" 2>/dev/null || true
 
+# Fix permissions on copied packages so mkarchiso's pacstrap (running as alpm) can read them
+chmod 644 "$LOCAL_REPO_ISO_DIR"/*.pkg.tar.zst 2>/dev/null || true
+
 # Generate the database inside the ISO
 repo-add "$LOCAL_REPO_ISO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_ISO_DIR"/*.pkg.tar.zst >/dev/null
+chmod 644 "$LOCAL_REPO_ISO_DIR"/* 2>/dev/null || true
 
 # Embed the package list for the installer to read as "defaults"
 echo "    Embedding package list..."
