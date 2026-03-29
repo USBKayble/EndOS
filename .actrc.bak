@@ -1,0 +1,13 @@
+# act configuration for EndOS
+# Usage: act -W (workflow dispatch)
+
+# Use the archlinux container specified in the workflow
+-P ubuntu-latest=archlinux:latest
+
+# Don't pull images automatically (we already pulled archlinux)
+--pull=false
+
+# Enable verbose output for debugging
+--verbose
+
+# Use GitHub default token (for local testing)

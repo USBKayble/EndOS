@@ -18,11 +18,14 @@ permissions:
 
 jobs:
   check-updates:
-    runs-on: ubuntu-latest
+    runs-on: [local]
     outputs:
       should_build: ${{ steps.decision.outputs.should_build }}
       commit_sha: ${{ steps.get_sha.outputs.sha }}
     steps:
+      - name: Install required packages
+        run: pacman -Sy --noconfirm jq nodejs npm
+
       - name: Get latest dots-hyprland commit
         id: get_sha
         run: |
@@ -49,7 +52,7 @@ jobs:
   build:
     needs: check-updates
     if: needs.check-updates.outputs.should_build == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [local]
     container:
       image: archlinux:latest
       options: --privileged
@@ -81,7 +84,9 @@ jobs:
             meson \
             ninja \
             patchelf \
-            python-build
+            python-build \
+            btrfs-progs \
+            nodejs
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf

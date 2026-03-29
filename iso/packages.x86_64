@@ -2,8 +2,8 @@ adw-gtk-theme-git
 alsa-utils
 amd-ucode
 antigravity
-archinstall
 arch-install-scripts
+archinstall
 b43-fwcutter
 base
 bc
@@ -23,6 +23,7 @@ cli11
 cliphist
 cmake
 coreutils
+cpptrace
 cryptsetup
 curl
 darkly-bin
@@ -51,10 +52,9 @@ geoclue
 git
 glib2
 gnome-keyring
-gobject-introspection
-google-breakpad
-google-chrome
 go-yq
+gobject-introspection
+google-chrome
 gpart
 gpm
 gptfdisk
@@ -76,6 +76,7 @@ hyprsunset
 illogical-impulse-audio
 illogical-impulse-backlight
 illogical-impulse-basic
+illogical-impulse-bibata-modern-classic-bin
 illogical-impulse-fonts-themes
 illogical-impulse-hyprland
 illogical-impulse-kde
@@ -143,14 +144,14 @@ nmap
 ntfs-3g
 nvme-cli
 obs-studio
+open-iscsi
+open-vm-tools
 openblas
 openbsd-netcat
 opencode
 openconnect
-open-iscsi
 openpgp-card-tools
 openssh
-open-vm-tools
 openvpn
 otf-space-grotesk
 parted
@@ -207,6 +208,7 @@ swappy
 syntax-highlighting
 syslinux
 systemd-resolvconf
+systemd-sysvcompat
 systemsettings
 tcpdump
 terminus-font
@@ -234,6 +236,7 @@ vim
 virtualbox-guest-utils-nox
 visual-studio-code-bin
 vpnc
+vulkan-headers
 wayland
 wayland-protocols
 wf-recorder
