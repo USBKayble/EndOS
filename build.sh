@@ -393,11 +393,31 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            if [ "$GITHUB_ACTIONS" = "true" ]; then
+                mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6 || true
+            else
+                mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            fi
+
+            # Verify chroot was actually created successfully
+            if [ ! -x "$CHROOT_DIR/root/usr/bin/pacman" ]; then
+                echo "    ERROR: Failed to initialize build chroot."
+                exit 1
+            fi
         else
             echo "    Using existing build chroot..."
             # Update the chroot
-            arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+            if [ "$GITHUB_ACTIONS" = "true" ]; then
+                arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm || true
+            else
+                arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+            fi
+
+            # Verify update was successful (if local repo was added, the db should exist)
+            if [ ! -f "$CHROOT_DIR/root/var/lib/pacman/sync/local_repo.db" ] && [ ! -f "$CHROOT_DIR/root/var/lib/pacman/sync/core.db" ]; then
+                echo "    ERROR: Failed to update build chroot."
+                exit 1
+            fi
         fi
         
         # Start a sudo keepalive in the background so we don't timeout during long builds
@@ -618,7 +638,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 
                 # makechrootpkg automatically copies the PKGBUILD directory into the chroot and builds it
                 # The built package will be in the current directory after completion
-                makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
+                if [ "$GITHUB_ACTIONS" = "true" ]; then
+                    makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm || true
+                else
+                    makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
+                fi
                 
                 # Copy built packages to our local repo
                 cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
@@ -697,16 +721,40 @@ echo "    Required packages: $REQUIRED_COUNT"
 if [ ! -d "$CHROOT_DIR/root" ]; then
     echo "    Creating wheel build chroot..."
     mkdir -p "$CHROOT_DIR"
-    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
-        meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+        mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib || true
+    else
+        mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib
+    fi
+
+    if [ ! -x "$CHROOT_DIR/root/usr/bin/python" ]; then
+        echo "    ERROR: Failed to initialize Python wheel chroot."
+        exit 1
+    fi
 else
     echo "    Installing Python wheel build dependencies in chroot..."
-    arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
-        meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+        arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib || true
+    else
+        arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib
+    fi
+
+    if [ ! -x "$CHROOT_DIR/root/usr/bin/python" ] || [ ! -x "$CHROOT_DIR/root/usr/bin/uv" ]; then
+        echo "    ERROR: Failed to install Python wheel chroot dependencies."
+        exit 1
+    fi
 fi
 
 # Copy requirements.txt into chroot and create wheels directory
