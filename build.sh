@@ -623,6 +623,14 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                         exit 1
                     }
                     cd "$BUILD_PKG"
+
+                    # Hack: fix 38c3-styles relying on deleted AUR package 'html2markdown'
+                    if [ "$BUILD_PKG" = "38c3-styles" ] && grep -q "html2markdown" PKGBUILD; then
+                        echo "        Patching 38c3-styles PKGBUILD to replace deleted 'html2markdown' with 'html2md'..."
+                        sed -i "s/'html2markdown'/'html2md'/g" PKGBUILD
+                        sed -i "s/html2markdown --input website.html --output website.md --output-overwrite/#html2markdown/g" PKGBUILD
+                        sed -i "s/# html2md -i website.html > website.md/html2md -i website.html > website.md/g" PKGBUILD
+                    fi
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
