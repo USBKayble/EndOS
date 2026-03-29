@@ -317,8 +317,13 @@ done
 for pkg_name in $(grep -vE "^\s*#|^\s*$" "$PKG_LIST_FILE"); do
     # Search for a file starting with the package name and having a version suffix
     # We use a more flexible search for the version (can start with v or digit)
-    if ! ls "$HOST_REPO_DIR"/"$pkg_name"-[v0-9]*.pkg.tar.zst >/dev/null 2>&1 && \
-       ! ls "$HOST_REPO_DIR"/"$pkg_name"-[a-z0-9]*.pkg.tar.zst >/dev/null 2>&1; then
+    # 🚀 Turbo: Replaced expensive 'ls' subshells with native Bash array globbing (nullglob)
+    # This avoids spawning 2 external processes per package iteration, reducing loop overhead.
+    shopt -s nullglob
+    local_matches=("$HOST_REPO_DIR"/"$pkg_name"-[v0-9]*.pkg.tar.zst "$HOST_REPO_DIR"/"$pkg_name"-[a-z0-9]*.pkg.tar.zst)
+    shopt -u nullglob
+
+    if [ ${#local_matches[@]} -eq 0 ]; then
         # Check if it might be provided by a different file name (e.g. from an alias)
         # We also check if it exists in system repos - if not, and not in local, it's missing.
         if ! pacman -Si "$pkg_name" >/dev/null 2>&1; then
@@ -537,7 +542,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         # Build packages in dependency order
         for pkg in "${BUILD_ORDER[@]}"; do
             # Check if we already have it built in the repo (handle any version format)
-            if ls "$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst >/dev/null 2>&1; then
+            shopt -s nullglob
+            pkg_matches=("$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst)
+            shopt -u nullglob
+
+            if [ ${#pkg_matches[@]} -gt 0 ]; then
                 echo "      - $pkg already built. Skipping."
                 continue
             fi
@@ -767,6 +776,8 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
     echo "    Checking which packages are missing..."
     
     # Detailed check for missing packages (optimized)
+    # 🚀 Turbo: Replaced subshells (sed, tr, echo, grep) with native Bash regex and string manipulation
+    # This avoids spawning 4+ external processes per line, significantly speeding up the loop.
     MISSING_PACKAGES=""
     # List all wheel and tarball files once to avoid repeated `ls` calls in the loop
     shopt -s nullglob
@@ -778,14 +789,18 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
         [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
         
         # Extract package name (before ==, >=, etc.) and create both hyphen and underscore variants
-        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_.-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
-        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
+        if [[ "$line" =~ ^([a-zA-Z0-9_.-]+) ]]; then
+            pkg_base="${BASH_REMATCH[1],,}"
+            pkg_hyphen="${pkg_base//_/-}"
+            pkg_underscore="${pkg_base//-/_}"
 
-        # Check if a file matching either the hyphenated or underscored package name exists.
-        # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
-        if ! echo "$WHEEL_FILES" | grep -q -i -e "/${pkg_hyphen}-" -e "/${pkg_underscore}-"; then
-            MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            # Check if a file matching either the hyphenated or underscored package name exists.
+            # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
+            shopt -s nocasematch
+            if [[ ! "$WHEEL_FILES" =~ /${pkg_hyphen}- ]] && [[ ! "$WHEEL_FILES" =~ /${pkg_underscore}- ]]; then
+                MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            fi
+            shopt -u nocasematch
         fi
     done < "$REQ_FILE"
     
