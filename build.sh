@@ -945,6 +945,10 @@ if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
     rm -f "$HOST_REPO_DIR"/local_repo.db* "$HOST_REPO_DIR"/local_repo.files* 2>/dev/null || true
     repo-add -n -R "$HOST_REPO_DIR/local_repo.db.tar.gz" "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null
     
+    # Ensure regenerated database and packages are readable by alpm/pacstrap
+    chmod 755 "$HOST_REPO_DIR" 2>/dev/null || true
+    chmod 644 "$HOST_REPO_DIR"/* 2>/dev/null || true
+
     # Also copy packages to system cache as backup
     sudo mkdir -p /var/cache/pacman/pkg
     sudo cp "$HOST_REPO_DIR"/*.pkg.tar.zst /var/cache/pacman/pkg/ 2>/dev/null || true
