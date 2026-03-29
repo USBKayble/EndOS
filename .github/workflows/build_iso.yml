@@ -110,6 +110,13 @@ jobs:
           export SYSTEMD_NSPAWN_REGISTER=0
           export SYSTEMD_SECCOMP=0
 
+          # Create a wrapper for systemd-nspawn to explicitly append --register=no
+          # Some versions of arch-nspawn/makechrootpkg ignore the environment variables.
+          mv /usr/bin/systemd-nspawn /usr/bin/systemd-nspawn.real
+          echo '#!/bin/bash' > /usr/bin/systemd-nspawn
+          echo 'exec /usr/bin/systemd-nspawn.real --register=no "$@"' >> /usr/bin/systemd-nspawn
+          chmod +x /usr/bin/systemd-nspawn
+
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
 
