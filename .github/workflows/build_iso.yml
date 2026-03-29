@@ -104,6 +104,11 @@ jobs:
           mkdir -p /run/systemd/nspawn
           mount -t tmpfs tmpfs /run/systemd/nspawn
 
+          # Start systemd to provide a full Linux environment for systemd-nspawn/machined
+          /usr/lib/systemd/systemd --system &
+          # Give systemd time to initialize the system bus and machine-id
+          sleep 5
+
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
 
