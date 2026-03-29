@@ -494,10 +494,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             echo "$aliased_deps"
         }
         
-        # Check if a package is in our AUR list
+        # Check if a package is an AUR package (i.e. not in official repos)
         is_aur_pkg() {
             local pkg="$1"
-            echo "$AUR_PKGS" | tr ' ' '\n' | grep -qx "$pkg"
+            # It is an AUR package if pacman -Si fails
+            ! sudo pacman -Si "$pkg" --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH" >/dev/null 2>&1
         }
         
         # Recursive function to resolve dependencies (topological sort)
