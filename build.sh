@@ -588,6 +588,14 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
                 chown -R 1000:1000 .
 
+                # Set SUDO_USER so makechrootpkg knows which user to drop privileges to.
+                # In GitHub Actions (running as root), SUDO_USER is empty and causes id: '': no such user
+                # We use 'nobody' or create a dummy user. The chown above used UID 1000, so let's create a user.
+                if ! id builduser >/dev/null 2>&1; then
+                    useradd -m -u 1000 builduser || true
+                fi
+                export SUDO_USER=builduser
+
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
                 cd "$BUILD_SUBDIR/$BUILD_PKG"

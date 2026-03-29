@@ -37,9 +37,10 @@ jobs:
             **Failed Run:** ${{ github.event.workflow_run.html_url }}
             **Branch:** ${{ github.event.workflow_run.head_branch }}
             **Commit:** ${{ github.event.workflow_run.head_sha }}
+            **Logs URL:** ${{ steps.get-logs.outputs.result }}
 
             Please:
-            1. Analyze the failure from the workflow run
+            1. Analyze the failure from the workflow run using the logs URL provided
             2. Identify the root cause
             3. Implement a fix
             4. Ensure the fix passes CI
