@@ -24,6 +24,15 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# In containerized environments (like GitHub Actions) where $SUDO_USER is empty or root,
+# explicitly create a build user and export SUDO_USER for makechrootpkg to use.
+if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = "root" ]; then
+    if ! id "builduser" >/dev/null 2>&1; then
+        useradd -m builduser
+    fi
+    export SUDO_USER="builduser"
+fi
+
 # Ensure proper mount propagation for systemd-nspawn/mkarchroot in containers (e.g., GitHub Actions)
 mount --make-rshared / || true
 mount --make-rshared /run || true
@@ -317,8 +326,13 @@ done
 for pkg_name in $(grep -vE "^\s*#|^\s*$" "$PKG_LIST_FILE"); do
     # Search for a file starting with the package name and having a version suffix
     # We use a more flexible search for the version (can start with v or digit)
-    if ! ls "$HOST_REPO_DIR"/"$pkg_name"-[v0-9]*.pkg.tar.zst >/dev/null 2>&1 && \
-       ! ls "$HOST_REPO_DIR"/"$pkg_name"-[a-z0-9]*.pkg.tar.zst >/dev/null 2>&1; then
+    # 🚀 Turbo: Replaced expensive 'ls' subshells with native Bash array globbing (nullglob)
+    # This avoids spawning 2 external processes per package iteration, reducing loop overhead.
+    shopt -s nullglob
+    local_matches=("$HOST_REPO_DIR"/"$pkg_name"-[v0-9]*.pkg.tar.zst "$HOST_REPO_DIR"/"$pkg_name"-[a-z0-9]*.pkg.tar.zst)
+    shopt -u nullglob
+
+    if [ ${#local_matches[@]} -eq 0 ]; then
         # Check if it might be provided by a different file name (e.g. from an alias)
         # We also check if it exists in system repos - if not, and not in local, it's missing.
         if ! pacman -Si "$pkg_name" >/dev/null 2>&1; then
@@ -359,6 +373,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
+    chmod 755 "$TEMP_DB_PATH"
     chown -R 1000:1000 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
@@ -403,6 +418,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
+        chmod 755 "$BUILD_DIR"
         chown -R 1000:1000 "$BUILD_DIR"
 
         # ====================================================================
@@ -537,7 +553,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         # Build packages in dependency order
         for pkg in "${BUILD_ORDER[@]}"; do
             # Check if we already have it built in the repo (handle any version format)
-            if ls "$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst >/dev/null 2>&1; then
+            shopt -s nullglob
+            pkg_matches=("$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst)
+            shopt -u nullglob
+
+            if [ ${#pkg_matches[@]} -gt 0 ]; then
                 echo "      - $pkg already built. Skipping."
                 continue
             fi
@@ -551,6 +571,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
+                chmod 755 "$BUILD_SUBDIR"
                 chown -R 1000:1000 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
@@ -767,6 +788,8 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
     echo "    Checking which packages are missing..."
     
     # Detailed check for missing packages (optimized)
+    # 🚀 Turbo: Replaced subshells (sed, tr, echo, grep) with native Bash regex and string manipulation
+    # This avoids spawning 4+ external processes per line, significantly speeding up the loop.
     MISSING_PACKAGES=""
     # List all wheel and tarball files once to avoid repeated `ls` calls in the loop
     shopt -s nullglob
@@ -778,14 +801,18 @@ if [ "$TOTAL_PACKAGES" -lt "$REQUIRED_COUNT" ]; then
         [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
         
         # Extract package name (before ==, >=, etc.) and create both hyphen and underscore variants
-        pkg_base=$(echo "$line" | sed -E 's/([a-zA-Z0-9_.-]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-        pkg_hyphen=$(echo "$pkg_base" | tr '_' '-')
-        pkg_underscore=$(echo "$pkg_base" | tr '-' '_')
+        if [[ "$line" =~ ^([a-zA-Z0-9_.-]+) ]]; then
+            pkg_base="${BASH_REMATCH[1],,}"
+            pkg_hyphen="${pkg_base//_/-}"
+            pkg_underscore="${pkg_base//-/_}"
 
-        # Check if a file matching either the hyphenated or underscored package name exists.
-        # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
-        if ! echo "$WHEEL_FILES" | grep -q -i -e "/${pkg_hyphen}-" -e "/${pkg_underscore}-"; then
-            MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            # Check if a file matching either the hyphenated or underscored package name exists.
+            # Grep for "/packagename-" or "/package_name-" to ensure we match the start of a filename.
+            shopt -s nocasematch
+            if [[ ! "$WHEEL_FILES" =~ /${pkg_hyphen}- ]] && [[ ! "$WHEEL_FILES" =~ /${pkg_underscore}- ]]; then
+                MISSING_PACKAGES="$MISSING_PACKAGES\n      - $pkg_base"
+            fi
+            shopt -u nocasematch
         fi
     done < "$REQ_FILE"
     
@@ -860,6 +887,20 @@ if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
     sudo cp "$HOST_REPO_DIR"/*.pkg.tar.zst /var/cache/pacman/pkg/ 2>/dev/null || true
     echo "    $(ls "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null | wc -l) packages ready"
 fi
+
+# Ensure the alpm user inside mkarchiso can traverse the path to local_repo (Fixes "target not found" in GitHub Actions)
+if [ "$GITHUB_ACTIONS" = "true" ]; then
+    echo "    Fixing traversal permissions for mkarchiso alpm user in CI..."
+    current_dir="$HOST_REPO_DIR"
+    while [ "$current_dir" != "/" ] && [ -n "$current_dir" ]; do
+        chmod a+rx "$current_dir" 2>/dev/null || true
+        current_dir=$(dirname "$current_dir")
+    done
+    chmod a+rx "/" 2>/dev/null || true
+fi
+
+# Explicitly ensure the repo files are readable by everyone
+chmod -R a+rX "$HOST_REPO_DIR"
 
 # Use pacman-build.conf for mkarchiso (has local_repo enabled)
 sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" -C "$ISO_DIR/pacman-build.conf" "$ISO_DIR"
