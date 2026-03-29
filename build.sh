@@ -645,20 +645,18 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 
                 # makechrootpkg automatically copies the PKGBUILD directory into the chroot and builds it
                 # The built package will be in the current directory after completion
-                if [ "$GITHUB_ACTIONS" = "true" ]; then
-                    makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm || true
-                else
-                    makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
-                fi
+                makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
                 
                 # Copy built packages to our local repo (fallback if PKGDEST failed)
-                cp *.pkg.tar.zst "$HOST_REPO_DIR/" || echo "      - Note: No packages in build directory (likely moved successfully to PKGDEST)."
+                cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || echo "      - Note: No packages in build directory (likely moved successfully to PKGDEST)."
 
                 # Fix permissions in HOST_REPO_DIR so subsequent makepkg/alpm builds can read it
                 chmod 644 "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null || true
 
-                # Strict verification: Check if any new package file appeared in PKGDEST
-                if [ -z "$(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2)" ]; then
+                # Strict verification: Check if the SPECIFIC new package file appeared in PKGDEST
+                # We use a wildcard for the version, but ensure it starts with the package base name
+                if ! ls "$HOST_REPO_DIR"/"$BUILD_PKG"-*.pkg.tar.zst >/dev/null 2>&1 && \
+                   ! ls "$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst >/dev/null 2>&1; then
                     echo "        ERROR: Build completed but no new package file found for $pkg (built as $BUILD_PKG)."
                     exit 1
                 fi
