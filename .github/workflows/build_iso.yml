@@ -96,6 +96,8 @@ jobs:
           systemd-machine-id-setup || true
 
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
+          mount --bind / / || true
+          mount --bind /run /run || true
           mount --make-rshared / || true
           mount --make-rshared /run || true
 
@@ -114,7 +116,7 @@ jobs:
           # Some versions of arch-nspawn/makechrootpkg ignore the environment variables.
           mv /usr/bin/systemd-nspawn /usr/bin/systemd-nspawn.real
           echo '#!/bin/bash' > /usr/bin/systemd-nspawn
-          echo 'exec /usr/bin/systemd-nspawn.real --register=no "$@"' >> /usr/bin/systemd-nspawn
+          echo 'exec /usr/bin/systemd-nspawn.real --register=no --keep-unit "$@"' >> /usr/bin/systemd-nspawn
           chmod +x /usr/bin/systemd-nspawn
 
           # Run the build script directly (it enforces root EUID internally)
