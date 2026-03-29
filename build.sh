@@ -359,7 +359,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
-    chown -R 1000:1000 "$TEMP_DB_PATH"
+    if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+        chown -R "$SUDO_USER" "$TEMP_DB_PATH"
+    else
+        chown -R 1000:1000 "$TEMP_DB_PATH"
+    fi
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
     if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
@@ -404,7 +408,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
-        chown -R 1000:1000 "$BUILD_DIR"
+        if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+            chown -R "$SUDO_USER" "$BUILD_DIR"
+        else
+            chown -R 1000:1000 "$BUILD_DIR"
+        fi
 
         # ====================================================================
         # DYNAMIC DEPENDENCY RESOLUTION
@@ -552,7 +560,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
-                chown -R 1000:1000 "$BUILD_SUBDIR"
+
+                if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+                    chown -R "$SUDO_USER" "$BUILD_SUBDIR"
+                else
+                    chown -R 1000:1000 "$BUILD_SUBDIR"
+                fi
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
@@ -586,15 +599,19 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
-                chown -R 1000:1000 .
+                if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+                    chown -R "$SUDO_USER" .
+                else
+                    chown -R 1000:1000 .
 
-                # Set SUDO_USER so makechrootpkg knows which user to drop privileges to.
-                # In GitHub Actions (running as root), SUDO_USER is empty and causes id: '': no such user
-                # We use 'nobody' or create a dummy user. The chown above used UID 1000, so let's create a user.
-                if ! id builduser >/dev/null 2>&1; then
-                    useradd -m -u 1000 builduser || true
+                    # Set SUDO_USER so makechrootpkg knows which user to drop privileges to.
+                    # In GitHub Actions (running as root), SUDO_USER is empty and causes id: '': no such user
+                    # We create a dummy user. The chown above used UID 1000, so let's create a user.
+                    if ! id builduser >/dev/null 2>&1; then
+                        useradd -m -u 1000 builduser || true
+                    fi
+                    export SUDO_USER=builduser
                 fi
-                export SUDO_USER=builduser
 
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
