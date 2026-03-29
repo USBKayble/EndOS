@@ -29,6 +29,15 @@ mount --make-rshared / || true
 mount --make-rshared /run || true
 systemd-machine-id-setup || true
 
+# Fix "Attempted to remove disk file system" error in Docker overlayfs
+mkdir -p /run/systemd/nspawn
+mount -t tmpfs tmpfs /run/systemd/nspawn || true
+
+# Prevent DBUS/Machined errors in nspawn containers
+export SYSTEMD_NSPAWN_REGISTER=0
+export SYSTEMD_NSPAWN_USE_CGNS=0
+export SYSTEMD_SECCOMP=0
+
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
 REPO_DIR="dots-hyprland"
