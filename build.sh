@@ -399,7 +399,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman
         else
             echo "    Using existing build chroot..."
             # Update the chroot
