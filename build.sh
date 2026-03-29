@@ -487,6 +487,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             # Apply OFFICIAL_ALIASES to dependency names 
             local aliased_deps=""
             for dep in $deps; do
+                # Hack: 38c3-styles depends on deleted AUR package html2markdown.
+                # Since we patch it later to use html2md, we must resolve html2md here.
+                if [ "$dep" = "html2markdown" ]; then
+                    dep="html2md"
+                fi
+
                 local final_dep="${OFFICIAL_ALIASES[$dep]:-$dep}"
                 aliased_deps="$aliased_deps $final_dep"
             done
