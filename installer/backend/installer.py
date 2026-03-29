@@ -100,6 +100,16 @@ class Installer(QObject):
         if not target_disk:
             raise ValueError("No target disk selected")
 
+        if not username:
+            raise ValueError("No username provided")
+
+        import re
+        if not re.match(r"^[a-z_][a-z0-9_-]*$", username) or len(username) > 31:
+            raise ValueError("Invalid username. Must start with a lowercase letter or underscore, contain only lowercase letters, numbers, hyphens, or underscores, and be under 32 characters.")
+
+        if not password:
+            raise ValueError("No password provided")
+
         # 1. Partition
         report(5, f"Partitioning {target_disk}...")
         self.disk_manager.partition_disk(target_disk)
@@ -193,6 +203,7 @@ class Installer(QObject):
                 "wheel,video,audio,storage,input",
                 "-s",
                 "/bin/bash",
+                "--",
                 username,
             ]
         )
@@ -286,6 +297,7 @@ class Installer(QObject):
                     mount_point,
                     "chown",
                     "-R",
+                    "--",
                     f"{username}:{username}",
                     f"/home/{username}",
                 ]
