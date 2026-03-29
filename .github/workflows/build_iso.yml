@@ -100,6 +100,13 @@ jobs:
           mount --make-rshared / || true
           mount --make-rshared /run || true
 
+          # Workaround for systemd-nspawn "Failed to open system bus" (dbus/machined) error in containers
+          # Some wrappers like arch-nspawn ignore SYSTEMD_NSPAWN_REGISTER=0, so we wrap the binary to force it.
+          mv /usr/bin/systemd-nspawn /usr/bin/systemd-nspawn.real
+          echo '#!/bin/bash' > /usr/bin/systemd-nspawn
+          echo 'exec /usr/bin/systemd-nspawn.real --register=no "$@"' >> /usr/bin/systemd-nspawn
+          chmod +x /usr/bin/systemd-nspawn
+
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
 
