@@ -29,6 +29,15 @@ mount --make-rshared / || true
 mount --make-rshared /run || true
 systemd-machine-id-setup || true
 
+# Fix "Attempted to remove disk file system" error in Docker overlayfs
+mkdir -p /run/systemd/nspawn
+mount -t tmpfs tmpfs /run/systemd/nspawn || true
+
+# Prevent DBUS/Machined errors in nspawn containers
+export SYSTEMD_NSPAWN_REGISTER=0
+export SYSTEMD_NSPAWN_USE_CGNS=0
+export SYSTEMD_SECCOMP=0
+
 # Configuration
 REPO_URL="https://github.com/end-4/dots-hyprland.git"
 REPO_DIR="dots-hyprland"
@@ -359,6 +368,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
+    chmod 755 "$TEMP_DB_PATH"
     chown -R 1000:1000 "$TEMP_DB_PATH"
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
@@ -389,13 +399,23 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman
         else
             echo "    Using existing build chroot..."
             # Update the chroot
             arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
         fi
         
+        # Ensure a non-root build user exists for makechrootpkg to drop privileges to.
+        # This is critical for environments like GitHub Actions where $SUDO_USER is empty or 'root'.
+        if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = "root" ]; then
+            echo "    Creating explicit builduser for makechrootpkg..."
+            if ! id -u builduser >/dev/null 2>&1; then
+                useradd -m builduser
+            fi
+            export SUDO_USER=builduser
+        fi
+
         # Start a sudo keepalive in the background so we don't timeout during long builds
         echo "    Starting sudo keepalive for long builds..."
         (while true; do sudo -v; sleep 60; done) &
@@ -403,6 +423,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
+        chmod 755 "$BUILD_DIR"
         chown -R 1000:1000 "$BUILD_DIR"
 
         # ====================================================================
@@ -551,6 +572,7 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
+                chmod 755 "$BUILD_SUBDIR"
                 chown -R 1000:1000 "$BUILD_SUBDIR"
                 
                 # We use PKGDEST to force makepkg to put the output in our repo

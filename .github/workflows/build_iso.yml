@@ -82,7 +82,8 @@ jobs:
             meson \
             ninja \
             patchelf \
-            python-build
+            python-build \
+            github-cli
 
           # Enable multilib repository
           echo "" >> /etc/pacman.conf
@@ -98,6 +99,13 @@ jobs:
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
           mount --make-rshared / || true
           mount --make-rshared /run || true
+
+          # Workaround for systemd-nspawn "Failed to open system bus" (dbus/machined) error in containers
+          # Some wrappers like arch-nspawn ignore SYSTEMD_NSPAWN_REGISTER=0, so we wrap the binary to force it.
+          mv /usr/bin/systemd-nspawn /usr/bin/systemd-nspawn.real
+          echo '#!/bin/bash' > /usr/bin/systemd-nspawn
+          echo 'exec /usr/bin/systemd-nspawn.real --register=no "$@"' >> /usr/bin/systemd-nspawn
+          chmod +x /usr/bin/systemd-nspawn
 
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
@@ -140,6 +148,11 @@ jobs:
 
           # Write to a file to preserve formatting and handle special characters
           echo "$COMMENT_BODY" > pr_comment.md
+
+          # gh cli requires a valid git repo Context when running in docker
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          export GH_REPO="${{ github.repository }}"
+
           gh pr comment ${{ github.event.pull_request.number }} --body-file pr_comment.md
 
       - name: Split ISO for Release
