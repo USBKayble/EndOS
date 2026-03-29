@@ -1,11 +1,13 @@
 # EndOS Base Packages
 # Core system
+base
+systemd
+pacman
 alsa-utils
 amd-ucode
 arch-install-scripts
 archinstall
 b43-fwcutter
-base
 bcachefs-tools
 bind
 plymouth
@@ -118,11 +120,9 @@ python-pip
 polkit-qt6
 openblas
 lapack
-
 # Login manager (fallback)
 greetd
 greetd-tuigreet
-
 # VM guest tools (for testing)
 hyperv
 open-vm-tools

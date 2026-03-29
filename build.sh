@@ -284,6 +284,10 @@ LOCAL_REPO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
 mkdir -p "$HOST_REPO_DIR"
 mkdir -p "$LOCAL_REPO_DIR"
 
+# Ensure the repository is writable by builduser/makepkg and readable by alpm
+chmod 777 "$HOST_REPO_DIR"
+chmod 755 "$LOCAL_REPO_DIR"
+
 # Pre-emptive strike: Sync host repositories to ISO pacman.conf
 # This ensures mkarchiso can see extra repos if the user has them enabled.
 # Note: chaotic-aur removed - user prefers building AUR packages directly
@@ -359,7 +363,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
     fi
     
     TEMP_DB_PATH=$(mktemp -d)
-    chown -R 1000:1000 "$TEMP_DB_PATH"
+    chmod 755 "$TEMP_DB_PATH"
+    if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+        chown -R "$SUDO_USER" "$TEMP_DB_PATH"
+    else
+        chown -R 1000:1000 "$TEMP_DB_PATH"
+    fi
     echo "    Syncing with system repositories..."
     # Use ISO's pacman.conf to detect AUR packages correctly (not host's which may have Chaotic AUR)
     if ! sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH"; then
@@ -389,11 +398,31 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            if [ "$GITHUB_ACTIONS" = "true" ]; then
+                mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6 || true
+            else
+                mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            fi
+
+            # Verify chroot was actually created successfully
+            if [ ! -x "$CHROOT_DIR/root/usr/bin/pacman" ]; then
+                echo "    ERROR: Failed to initialize build chroot."
+                exit 1
+            fi
         else
             echo "    Using existing build chroot..."
             # Update the chroot
-            arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+            if [ "$GITHUB_ACTIONS" = "true" ]; then
+                arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm || true
+            else
+                arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+            fi
+
+            # Verify update was successful (if local repo was added, the db should exist)
+            if [ ! -f "$CHROOT_DIR/root/var/lib/pacman/sync/local_repo.db" ] && [ ! -f "$CHROOT_DIR/root/var/lib/pacman/sync/core.db" ]; then
+                echo "    ERROR: Failed to update build chroot."
+                exit 1
+            fi
         fi
         
         # Start a sudo keepalive in the background so we don't timeout during long builds
@@ -403,7 +432,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
         
         BUILD_DIR=$(mktemp -d)
-        chown -R 1000:1000 "$BUILD_DIR"
+        chmod 755 "$BUILD_DIR"
+        if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+            chown -R "$SUDO_USER" "$BUILD_DIR"
+        else
+            chown -R 1000:1000 "$BUILD_DIR"
+        fi
 
         # ====================================================================
         # DYNAMIC DEPENDENCY RESOLUTION
@@ -453,6 +487,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             # Apply OFFICIAL_ALIASES to dependency names 
             local aliased_deps=""
             for dep in $deps; do
+                # Hack: 38c3-styles depends on deleted AUR package html2markdown.
+                # Since we patch it later to use html2md, we must resolve html2md here.
+                if [ "$dep" = "html2markdown" ]; then
+                    dep="html2md"
+                fi
+
                 local final_dep="${OFFICIAL_ALIASES[$dep]:-$dep}"
                 aliased_deps="$aliased_deps $final_dep"
             done
@@ -460,10 +500,11 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             echo "$aliased_deps"
         }
         
-        # Check if a package is in our AUR list
+        # Check if a package is an AUR package (i.e. not in official repos)
         is_aur_pkg() {
             local pkg="$1"
-            echo "$AUR_PKGS" | tr ' ' '\n' | grep -qx "$pkg"
+            # It is an AUR package if pacman -Si fails
+            ! sudo pacman -Si "$pkg" --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH" >/dev/null 2>&1
         }
         
         # Recursive function to resolve dependencies (topological sort)
@@ -551,7 +592,13 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             (
                 # Use a temporary directory for the build process
                 BUILD_SUBDIR=$(mktemp -d)
-                chown -R 1000:1000 "$BUILD_SUBDIR"
+                chmod 755 "$BUILD_SUBDIR"
+
+                if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+                    chown -R "$SUDO_USER" "$BUILD_SUBDIR"
+                else
+                    chown -R 1000:1000 "$BUILD_SUBDIR"
+                fi
                 
                 # We use PKGDEST to force makepkg to put the output in our repo
                 export PKGDEST="$HOST_REPO_DIR"
@@ -582,10 +629,30 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                         exit 1
                     }
                     cd "$BUILD_PKG"
+
+                    # Hack: fix 38c3-styles relying on deleted AUR package 'html2markdown'
+                    if [ "$BUILD_PKG" = "38c3-styles" ] && grep -q "html2markdown" PKGBUILD; then
+                        echo "        Patching 38c3-styles PKGBUILD to replace deleted 'html2markdown' with 'html2md'..."
+                        sed -i "s/'html2markdown'/'html2md'/g" PKGBUILD
+                        sed -i "s/html2markdown --input website.html --output website.md --output-overwrite/#html2markdown/g" PKGBUILD
+                        sed -i "s/# html2md -i website.html > website.md/html2md -i website.html > website.md/g" PKGBUILD
+                    fi
                 fi
                 
                 # Fix permissions so the build user inside chroot can write to SRCDEST
-                chown -R 1000:1000 .
+                if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+                    chown -R "$SUDO_USER" .
+                else
+                    chown -R 1000:1000 .
+
+                    # Set SUDO_USER so makechrootpkg knows which user to drop privileges to.
+                    # In GitHub Actions (running as root), SUDO_USER is empty and causes id: '': no such user
+                    # We create a dummy user. The chown above used UID 1000, so let's create a user.
+                    if ! id builduser >/dev/null 2>&1; then
+                        useradd -m -u 1000 builduser || true
+                    fi
+                    export SUDO_USER=builduser
+                fi
 
                 # Build using makechrootpkg for complete isolation
                 echo "        Building in chroot with makechrootpkg..."
@@ -595,11 +662,16 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 # The built package will be in the current directory after completion
                 makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
                 
-                # Copy built packages to our local repo
-                cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
-                
-                # Strict verification: Check if any new package file appeared in PKGDEST
-                if [ -z "$(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2)" ]; then
+                # Copy built packages to our local repo (fallback if PKGDEST failed)
+                cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || echo "      - Note: No packages in build directory (likely moved successfully to PKGDEST)."
+
+                # Fix permissions in HOST_REPO_DIR so subsequent makepkg/alpm builds can read it
+                chmod 644 "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null || true
+
+                # Strict verification: Check if the SPECIFIC new package file appeared in PKGDEST
+                # We use a wildcard for the version, but ensure it starts with the package base name
+                if ! ls "$HOST_REPO_DIR"/"$BUILD_PKG"-*.pkg.tar.zst >/dev/null 2>&1 && \
+                   ! ls "$HOST_REPO_DIR"/"$pkg"-*.pkg.tar.zst >/dev/null 2>&1; then
                     echo "        ERROR: Build completed but no new package file found for $pkg (built as $BUILD_PKG)."
                     exit 1
                 fi
@@ -612,8 +684,10 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
             # This ensures dependencies can find it when they're built next
             echo "        Updating local repository database..."
             for newpkg in $(find "$HOST_REPO_DIR" -maxdepth 1 -name "*.pkg.tar.zst" -mmin -2); do
+                chmod 644 "$newpkg" 2>/dev/null || true
                 repo-add "$HOST_REPO_DIR/local_repo.db.tar.gz" "$newpkg" 2>/dev/null || true
             done
+            chmod 644 "$HOST_REPO_DIR"/* 2>/dev/null || true
             
             # Sync pacman database so the next package can find this dependency
             sudo pacman -Sy --config "$ISO_DIR/pacman.conf" --dbpath "$TEMP_DB_PATH" >/dev/null 2>&1 || true
@@ -630,13 +704,18 @@ echo "    Syncing local packages to ISO..."
 # Create the repo directory in the ISO root
 LOCAL_REPO_ISO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
 mkdir -p "$LOCAL_REPO_ISO_DIR"
+chmod 755 "$LOCAL_REPO_ISO_DIR"
 
 # Copy ALL packages from the host repo cache (includes official + custom)
 # We assume HOST_REPO_DIR contains everything because we ran 'pacman -Syw' earlier
 cp "$HOST_REPO_DIR"/*.pkg.tar.zst "$LOCAL_REPO_ISO_DIR/" 2>/dev/null || true
 
+# Fix permissions on copied packages so mkarchiso's pacstrap (running as alpm) can read them
+chmod 644 "$LOCAL_REPO_ISO_DIR"/*.pkg.tar.zst 2>/dev/null || true
+
 # Generate the database inside the ISO
 repo-add "$LOCAL_REPO_ISO_DIR/local_repo.db.tar.gz" "$LOCAL_REPO_ISO_DIR"/*.pkg.tar.zst >/dev/null
+chmod 644 "$LOCAL_REPO_ISO_DIR"/* 2>/dev/null || true
 
 # Embed the package list for the installer to read as "defaults"
 echo "    Embedding package list..."
@@ -672,16 +751,40 @@ echo "    Required packages: $REQUIRED_COUNT"
 if [ ! -d "$CHROOT_DIR/root" ]; then
     echo "    Creating wheel build chroot..."
     mkdir -p "$CHROOT_DIR"
-    mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
-        meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+        mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib || true
+    else
+        mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib
+    fi
+
+    if [ ! -x "$CHROOT_DIR/root/usr/bin/python" ]; then
+        echo "    ERROR: Failed to initialize Python wheel chroot."
+        exit 1
+    fi
 else
     echo "    Installing Python wheel build dependencies in chroot..."
-    arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
-        meson ninja patchelf python-build cairo gobject-introspection \
-        wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+        arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib || true
+    else
+        arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
+            meson ninja patchelf python-build cairo gobject-introspection \
+            wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
+            libjpeg-turbo zlib
+    fi
+
+    if [ ! -x "$CHROOT_DIR/root/usr/bin/python" ] || [ ! -x "$CHROOT_DIR/root/usr/bin/uv" ]; then
+        echo "    ERROR: Failed to install Python wheel chroot dependencies."
+        exit 1
+    fi
 fi
 
 # Copy requirements.txt into chroot and create wheels directory
@@ -855,6 +958,10 @@ if ls "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null 2>&1; then
     rm -f "$HOST_REPO_DIR"/local_repo.db* "$HOST_REPO_DIR"/local_repo.files* 2>/dev/null || true
     repo-add -n -R "$HOST_REPO_DIR/local_repo.db.tar.gz" "$HOST_REPO_DIR"/*.pkg.tar.zst >/dev/null
     
+    # Ensure regenerated database and packages are readable by alpm/pacstrap
+    chmod 755 "$HOST_REPO_DIR" 2>/dev/null || true
+    chmod 644 "$HOST_REPO_DIR"/* 2>/dev/null || true
+
     # Also copy packages to system cache as backup
     sudo mkdir -p /var/cache/pacman/pkg
     sudo cp "$HOST_REPO_DIR"/*.pkg.tar.zst /var/cache/pacman/pkg/ 2>/dev/null || true

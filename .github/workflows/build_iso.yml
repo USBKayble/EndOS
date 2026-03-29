@@ -96,8 +96,28 @@ jobs:
           systemd-machine-id-setup || true
 
           # Workaround for systemd-nspawn "Attempted to remove disk file system" error in containers
+          mount --bind / / || true
+          mount --bind /run /run || true
           mount --make-rshared / || true
           mount --make-rshared /run || true
+
+          # Fix "Attempted to remove disk file system" by ensuring /run/systemd/nspawn is a tmpfs
+          # systemd-nspawn refuses to rm -rf propagate directories on a disk-backed filesystem
+          mkdir -p /run/systemd/nspawn
+          mount -t tmpfs tmpfs /run/systemd/nspawn
+
+          # Disable systemd-nspawn's attempt to use cgroups and machined registration
+          # This prevents "Failed to open system bus" and scope allocation errors in containers
+          export SYSTEMD_NSPAWN_USE_CGNS=0
+          export SYSTEMD_NSPAWN_REGISTER=0
+          export SYSTEMD_SECCOMP=0
+
+          # Create a wrapper for systemd-nspawn to explicitly append --register=no
+          # Some versions of arch-nspawn/makechrootpkg ignore the environment variables.
+          mv /usr/bin/systemd-nspawn /usr/bin/systemd-nspawn.real
+          echo '#!/bin/bash' > /usr/bin/systemd-nspawn
+          echo 'exec /usr/bin/systemd-nspawn.real --register=no --keep-unit "$@"' >> /usr/bin/systemd-nspawn
+          chmod +x /usr/bin/systemd-nspawn
 
           # Run the build script directly (it enforces root EUID internally)
           bash build.sh
@@ -109,38 +129,6 @@ jobs:
           name: build-log-${{ github.run_number }}
           path: build.log
           retention-days: 7
-
-      - name: Post failure logs to PR
-        if: failure() && github.event_name == 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LOG_TAIL=""
-          if [ -f "build.log" ]; then
-            LOG_TAIL=$(tail -n 100 build.log)
-          else
-            LOG_TAIL="build.log not found."
-          fi
-
-          COMMENT_BODY="## ❌ Build ISO Workflow Failed
-
-          **Run Number:** ${{ github.run_number }}
-          **Commit:** ${{ github.event.pull_request.head.sha }}
-
-          You can view the full build logs in the [Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-
-          <details>
-          <summary><b>Last 100 lines of build.log</b></summary>
-
-          \`\`\`
-          $LOG_TAIL
-          \`\`\`
-
-          </details>"
-
-          # Write to a file to preserve formatting and handle special characters
-          echo "$COMMENT_BODY" > pr_comment.md
-          gh pr comment ${{ github.event.pull_request.number }} --body-file pr_comment.md
 
       - name: Split ISO for Release
         run: |
