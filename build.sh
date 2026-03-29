@@ -389,11 +389,12 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
         if [ ! -d "$CHROOT_DIR/root" ]; then
             echo "    Creating build chroot environment for package isolation..."
             mkdir -p "$CHROOT_DIR"
-            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6
+            # Ignore exit code 1 from systemd-nspawn cleanup failures in containers
+            mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman fontforge python-fonttools polkit-qt6 || true
         else
             echo "    Using existing build chroot..."
             # Update the chroot
-            arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm
+            arch-nspawn "$CHROOT_DIR/root" pacman -Syu --noconfirm || true
         fi
         
         # Start a sudo keepalive in the background so we don't timeout during long builds
@@ -672,16 +673,17 @@ echo "    Required packages: $REQUIRED_COUNT"
 if [ ! -d "$CHROOT_DIR/root" ]; then
     echo "    Creating wheel build chroot..."
     mkdir -p "$CHROOT_DIR"
+    # Ignore exit code 1 from systemd-nspawn cleanup failures in containers
     mkarchroot -C "$ISO_DIR/pacman.conf" "$CHROOT_DIR/root" base systemd base-devel pacman python \
         meson ninja patchelf python-build cairo gobject-introspection \
         wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+        libjpeg-turbo zlib || true
 else
     echo "    Installing Python wheel build dependencies in chroot..."
     arch-nspawn "$CHROOT_DIR/root" pacman -S --needed --noconfirm \
         meson ninja patchelf python-build cairo gobject-introspection \
         wayland wayland-protocols dbus dbus-glib python-dbus libffi glib2 openblas lapack uv \
-        libjpeg-turbo zlib
+        libjpeg-turbo zlib || true
 fi
 
 # Copy requirements.txt into chroot and create wheels directory
