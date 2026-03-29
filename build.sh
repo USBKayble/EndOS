@@ -602,7 +602,8 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                 
                 # makechrootpkg automatically copies the PKGBUILD directory into the chroot and builds it
                 # The built package will be in the current directory after completion
-                makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
+                # We append || true to ignore systemd-nspawn cleanup failures (like "Failed to open system bus")
+                makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm || true
                 
                 # Copy built packages to our local repo
                 cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
