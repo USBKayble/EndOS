@@ -284,8 +284,8 @@ LOCAL_REPO_DIR="${ISO_DIR}/airootfs/var/local_repo/x86_64"
 mkdir -p "$HOST_REPO_DIR"
 mkdir -p "$LOCAL_REPO_DIR"
 
-# Ensure the repository is readable by alpm and other unprivileged users
-chmod 755 "$HOST_REPO_DIR"
+# Ensure the repository is writable by builduser/makepkg and readable by alpm
+chmod 777 "$HOST_REPO_DIR"
 chmod 755 "$LOCAL_REPO_DIR"
 
 # Pre-emptive strike: Sync host repositories to ISO pacman.conf
@@ -651,9 +651,9 @@ if [ "$PKG_LIST_CHANGED" = true ] || [ -z "$(ls -A "$HOST_REPO_DIR" 2>/dev/null 
                     makechrootpkg -c -r "$CHROOT_DIR" -- -f --noconfirm
                 fi
                 
-                # Copy built packages to our local repo
-                cp *.pkg.tar.zst "$HOST_REPO_DIR/" 2>/dev/null || true
-                
+                # Copy built packages to our local repo (fallback if PKGDEST failed)
+                cp *.pkg.tar.zst "$HOST_REPO_DIR/" || echo "      - Note: No packages in build directory (likely moved successfully to PKGDEST)."
+
                 # Fix permissions in HOST_REPO_DIR so subsequent makepkg/alpm builds can read it
                 chmod 644 "$HOST_REPO_DIR"/*.pkg.tar.zst 2>/dev/null || true
 
